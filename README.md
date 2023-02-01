@@ -10,8 +10,7 @@ Patrick Jantz PhD, Assistant Professor - Patrick.Jantz@nau.edu
 
 
 The NASA funded project *"SDG15: Life on land 80NSSC19K0186"* is supported by and governments of Perú, Ecuador & Colombia, PNUD (office in NY; PE, CO, EC), Montana State University, University Northern British Columba, Univeristy of Queensland, WCS, GEF, and Northern Arizona University.
-![image](https://github.com/gonzalezivan90/SDG15_indicators/sponsors.png)
-
+![image](https://github.com/gonzalezivan90/SDG15_indicators/blob/main/sponsors.png?raw=true)
 
 1.####
 
