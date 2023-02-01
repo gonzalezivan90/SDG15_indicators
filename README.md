@@ -1,10 +1,13 @@
-# SDG15 indicators || Indicadores ODS 15
+#### SDG15 indicators || Indicadores ODS 15
 
-### [EN] Scripts for calculating -SDG15: Life on land- complementary indicators for Peru, Ecuador and Colombia (PEC)
-### [ES] Scripts para calcular indicaores complementarios al ODS15: Vida sobre la tierra, para Perú, Ecuador y Colombia (PEC)
+Ivan Gonzalez, PhD student - ig299@nau.edu
+Patrick Jantz PhD, Assistant Professor - Patrick.Jantz@nau.edu
 
-SDG15: Life on land 80NSSC19K0186![image](https://user-images.githubusercontent.com/5403068/215961963-c807184c-c172-414e-a36d-36ffacb67913.png)
+> [EN] Scripts for calculating -SDG15: Life on land- complementary indicators for Peru, Ecuador and Colombia (PEC)
+> [ES] Scripts para calcular indicaores complementarios al ODS15: Vida sobre la tierra, para Perú, Ecuador y Colombia (PEC)
 
+The NASA funded project *"SDG15: Life on land 80NSSC19K0186"* is supported by and governments of Perú, Ecuador & Colombia, PNUD (office in NY; PE, CO, EC), Montana State University, University Northern British Columba, Univeristy of Queensland, WCS, GEF, and Northern Arizona University.
+![image](https://user-images.githubusercontent.com/5403068/215965293-341aa9d1-513f-43a8-97d5-ef1101cd65d5.png)
 
 1.####
 [EN] This repo contains the information and scripts required to calculate a new set of complementary indicators related to SDG15: Life on Land. The tools and datasets are open sources, allowing different audiences to calculate, modify and reproduce the spatial indicators. The final result is a single value per year which is the format countries report SDG indicators to United Nations. However, there are several geographical analyses behind the scenes. The users will see along the intermediate steps how the original data is transformed progressively into the final indicator. Each indicator is calculated for every country using official national data, but also in are gional context that uses NASA global datasets.
