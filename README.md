@@ -1,23 +1,17 @@
-#### SDG15 indicators || Indicadores ODS 15
-# 1
-## 2
-### 3
-#### 4
-
-
-
+# NASA funded proyect: SDG15 Life on Land || Proyecto NASA ODS15: Vida sobre la tierra 
 
 Ivan Gonzalez, PhD student - ig299@nau.edu
 
 Patrick Jantz PhD, Assistant Professor - Patrick.Jantz@nau.edu
 
 
-[EN] Scripts for calculating -SDG15: Life on land- complementary indicators for Peru, Ecuador and Colombia (PEC)
-[ES] Scripts para calcular indicaores complementarios al ODS15: Vida sobre la tierra, para Perú, Ecuador y Colombia (PEC)
+#### [EN] Scripts for calculating -SDG15: Life on land- complementary indicators for Peru, Ecuador and Colombia (PEC)
+#### [ES] Scripts para calcular indicaores complementarios al ODS15: Vida sobre la tierra, para Perú, Ecuador y Colombia (PEC)
 
 
 The NASA funded project *"SDG15: Life on land 80NSSC19K0186"* is supported by and governments of Perú, Ecuador & Colombia, PNUD (office in NY; PE, CO, EC), Montana State University, University Northern British Columba, Univeristy of Queensland, WCS, GEF, and Northern Arizona University.
 ![image](https://github.com/gonzalezivan90/SDG15_indicators/sponsors.png)
+
 
 1.####
 
@@ -62,6 +56,5 @@ The NASA funded project *"SDG15: Life on land 80NSSC19K0186"* is supported by an
     + [PEC]()  + [Peru]() + [Ecuador]() + [Colombia]()
 
 
-
-
-
+[EN] The installers can be found [here(https://drive.google.com/open?id=1HaAAoMKb_FHmriIFMDADhQBz034j8_H8&authuser=ig299%40nau.edu&usp=drive_fs=, as well as a document with the instructions
+[ES] Los instaladores de los programas se pueden encontrar [acá](https://drive.google.com/open?id=1HaAAoMKb_FHmriIFMDADhQBz034j8_H8&authuser=ig299%40nau.edu&usp=drive_fs), así como un tutorial de instalación
