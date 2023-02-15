@@ -136,7 +136,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
                  '--calc="1+A"', 
                  ' -A ', root, bosque_rasterizado, 
                  ' --outfile=', root, bosque_recategorizado,
-                 ' --type=Byte --co="NBITS=2" --co="COMPRESS=DEFLATE" --quiet'
+                 ' --type=Byte --co="NBITS=8" --co="COMPRESS=DEFLATE" --quiet'
           ))) #
       print(system.time( 
         system(intern = TRUE, cmd) # 35.21 seg 
