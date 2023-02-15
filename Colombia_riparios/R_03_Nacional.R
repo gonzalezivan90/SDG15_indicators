@@ -9,7 +9,7 @@
 ## 4. Comentarios del texto inicia con dos ##
 ## 5. Código inhabilitado inicia con un #. Puede removerse con Ctrl+C
 ## 6. Abrir en QGIS o similar los resultados después de cada paso y así verificar el avance del script
-## 7. Los archivos se pueden descargar de esta carpeta: XXXXXXXXXXXXX
+## 7. Los archivos se pueden descargar de esta carpeta: https://drive.google.com/open?id=15j82ajopa_9eYkwSSAr0g39AoC_sX5rE&authuser=ig299%40nau.edu&usp=drive_fs
 ## 8. El algoritmo puede tomar hasta 6H en ejecutarse por el tamaño de los archivos
 ## 9. Se debe crear una carpeta de trabajo. Ojalá cerca de la raíz y sin espacios. Ej: C:/Colombia_riparios/
 ## 10. Las líneas de código que se deben cambiar tienen este texto al final "#CAMBIAR ---"
