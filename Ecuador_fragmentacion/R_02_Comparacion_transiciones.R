@@ -18,6 +18,21 @@ root2[grep(' ', root2)] <- paste0('"', root2[grep(' ', root2)] ,'"')
 check <- source('I:/Mi unidad/Datos-NASA-ODS15/Talleres/Ecuador_fragmentacion/08_scripts-R/R_03_tabuleRaster.R')
 
 # ## Para ejecutar en R dentro de Linux
+# root = '/mnt/c/temp/Peru_fragmentacion/05_bosques-reclasificados'
+# setwd(root)
+# list.files()
+# for (i in 2000:2022){
+#   inname = paste0('recl12_bosqueFecha_', i, '.tif')
+#   outname = paste0('fragmentacion_', i, '.tif')
+#   if(!file.exists(outname) & file.exists(inname)){
+#     #cmd = paste0(root, 'mspa_lin64 -i ', root, inname,' -o ', root, outname)
+#     cmd = paste0('time ./mspa_lin64 -i ', inname,' -o ', outname, '\n')
+#     cat(cmd)
+#     #system(cmd)
+#   }
+# }
+
+# ## Para ejecutar en R dentro de Linux
 # root = '/mnt/c/temp/Ecuador_fragmentacion/03_bosques-reclasificados'
 # setwd(root)
 # list.files()

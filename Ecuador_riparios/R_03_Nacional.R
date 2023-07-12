@@ -32,6 +32,7 @@ library(raster) # Raster
 library(rgdal)  # Funciones de GDAL / OGR para R
 library(foreign) # Cargar las tablas .dbf de shapefiles
 library(gdalUtilities) # Conexion a suit GDAL/OGR para ejecutar externo 
+library(gdalUtils) # Conexion a suit GDAL/OGR para ejecutar externo 
 
 
 
@@ -60,11 +61,11 @@ paste0(carpeta_trabajo, '01_insumos/')
                      'v_ff010_cobertura_vegetal_2014_aPolygon.shp', # Bosque en SHP
                      'v_ff010_cobertura_vegetal_2016_aPolygon.shp', # Bosque en SHP
                      'v_ff010_cobertura_vegetal_2018_aPolygon.shp', # Bosque en SHP
-                     'v_ff010_cobertura_vegetal_1990_aPolygon.shp', # Bosque en SHP
-                     'ORGANIZACIαN TERRITORIAL PROVINCIAL.shp', # Provincias
+                     'v_ff010_cobertura_vegetal_2020_aPolygon.shp', # Bosque en SHP
+                     'ORGANIZACION TERRITORIAL PROVINCIAL.shp', # Provincias
                      'Rio_l_250K_ECU_IGM.shp', # Rios en lineas
                      'Rio_a_250K_ECU_IGM.shp' # Rios en poligonos
-) %in% list.files(paste0(carpeta_trabajo, '04_calculoNacional/01_insumos'))))
+) %in% list.files(paste0(root, '/01_insumos'))))
 
 
 
@@ -82,20 +83,18 @@ folder_bosques <- '01_insumos'
 (archivos_bosques <- list.files(path = folder_bosques, 
                                 pattern = '^v_ff.+shp$', full.names = TRUE))
 
-(info_bosques <- gdalUtils::ogrinfo(archivos_bosques[1], so = TRUE, al = TRUE))
+(info_bosques <- tryCatch(gdalUtils::ogrinfo(archivos_bosques[1], so = TRUE, al = TRUE), error = function(e) NULL))
+if(!is.null(info_bosques)){
+  (extent_bosques <- grep('Extent', info_bosques, value = TRUE))
+  (extent_sin_texto <- gsub('[a-zA-Z]|\\)|\\(|-|:|: |,|^ ', '', extent_bosques) )
+  (extent_numerico <- as.numeric(strsplit( gsub('  ', ' ', 
+                                                extent_sin_texto), ' ')[[1]] ))
+} else {
+  ## En caso de error con la linea 25 gdalUtils::ogrinfo
+  (info_bosques <- rgdal::ogrInfo(archivos_bosques[1]))
+  (extent_numerico <- info_bosques$extent)
+}
 
-(extent_bosques <- grep('Extent', info_bosques, value = TRUE))
-(extent_sin_texto <- gsub('[a-zA-Z]|\\)|\\(|-|:|: |,|^ ', '', extent_bosques) )
-(extent_numerico <- as.numeric(strsplit( gsub('  ', ' ', 
-                                              extent_sin_texto), ' ')[[1]] ))
-
-## En caso de error con la linea 25 gdalUtils::ogrinfo
-(info_bosques <- rgdal::ogrInfo(archivos_bosques[1]))
-(extent_numerico <- info_bosques$extent)
-
-
-# system.time(extent_bosques_rgdal <- rgdal::ogrInfo(archivos_bosques[1])) # 5 mins
-# extent_bosques <- extent_bosques_rgdal$extent
 
 ## Rios ------
 ruta_rios <- '01_insumos/Rio_l_250K_ECU_IGM.shp' # < Archivo externo >
@@ -143,7 +142,6 @@ if ( ! file.exists(archivo_rios_poligonos) ){
 
 
 ## Buffer rios ------
-#archivo_buffer_30 <-  paste0('C:/temp/', 'buffer30.shp')
 archivo_buffer_30 <-  paste0('04_rios-buffer/', 'buffer30.shp')
 
 if ( ! file.exists(archivo_buffer_30) ){
@@ -186,7 +184,7 @@ if (!file.exists(archivo_buffer_30_neg)){
   print(system.time(
     gdalUtilities::gdal_rasterize(src_datasource = archivo_buffer_30, 
                                   dst_filename = archivo_buffer_30_neg,
-                                  ot = 'Int8', # Para permitir valores negativos
+                                  ot = 'Int16', # Para permitir valores negativos
                                   burn = 1, tr = c(30, 30), init = 0, 
                                   te =  extent_numerico, # xmin ymin xmax ymax
                                   co=c("COMPRESS=DEFLATE"))
@@ -194,7 +192,7 @@ if (!file.exists(archivo_buffer_30_neg)){
   
   ## Quitar los cuerpos permanentes de agua - rasterizar con valores negativos
   print(system.time(
-    gdalUtils::gdal_rasterize(src_datasource = ruta_rios_pol,
+    gdalUtilities::gdal_rasterize(src_datasource = ruta_rios_pol,
                               dst_filename = archivo_buffer_30_neg,  
                               add = TRUE, burn = -1)
   )) # 60seg
@@ -212,14 +210,14 @@ if (!file.exists(archivo_buffer_100_neg)){
   print(system.time(
     gdalUtilities::gdal_rasterize(src_datasource = archivo_buffer_100, 
                                   dst_filename = archivo_buffer_100_neg, 
-                                  ot = 'Int8', # Para permitir valores negativos
+                                  ot = 'Int16', # Para permitir valores negativos
                                   burn = 1, tr = c(30, 30), init = 0, 
                                   te =  extent_numerico,
                                   co=c("COMPRESS=DEFLATE"))
   )) # 14seg
   
   ## Quitar los cuerpos permanentes de agua - rasterizar con valores negativos
-  gdalUtils::gdal_rasterize(src_datasource = ruta_rios_pol,
+  gdalUtilities::gdal_rasterize(src_datasource = ruta_rios_pol,
                             dst_filename = archivo_buffer_100_neg,  
                             add = TRUE, burn = -1)
   
@@ -278,13 +276,12 @@ celdas_buff_100 <- Reduce(f = '*', x = dimensiones_buff_100)
 
 
 ## Iterar sobre los bosques -----
-
+nombres_columnas <- c('cobertura_', 'ctn2')
 
 for( f in 1:length(archivos_bosques)){ # f = 1 # }
   
   print(paste(' ---- Capa ', f, ' de ', length(archivos_bosques),
               ' -- ', basename(archivos_bosques[f]) ) )
-  
   
   ## Bosques filtrar polígono -----
   (bosque_archivo <- gsub('v_ff010_cobertura_vegetal_', 'BOSQUE_',
@@ -298,15 +295,16 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   if ( !file.exists(bosque_archivo_ruta) ) {
     
     tabla_dbf_boque <- read.dbf(gsub('.shp', '.dbf', archivos_bosques[f]), as.is = TRUE)
+    column_name <- nombres_columnas[nombres_columnas %in% colnames(tabla_dbf_boque)][1]
     # head(tabla_dbf_boque)
-    valores_unicos <- unique(tabla_dbf_boque$cobertura_)
+    valores_unicos <- unique(tabla_dbf_boque[, column_name])
     (valores_bosque <- grep('BOS', valores_unicos, value = TRUE))
     
     gdalUtilities::ogr2ogr(src_datasource_name = archivos_bosques[f], 
                            dst_datasource_name = bosque_archivo_ruta, f = "ESRI Shapefile",
                            #where = "cobertura_ = 'BOSQUE' AND cobertura_ = 'BOSQUE NATIVO'"
                            #where = "cobertura_ LIKE 'BOSQUE' AND cobertura_ LIKE 'BOSQUE NATIVO'"
-                           where = paste0("cobertura_ LIKE '", valores_bosque,"'")
+                           where = paste0(column_name, " LIKE '", valores_bosque,"'")
     )
   }
   
@@ -351,7 +349,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
     print(system.time({ # 50 mins
       bosques_riparios_30 <-  stack_capas_30m[[1]] & stack_capas_30m[[2]]
       writeRaster(bosques_riparios_30,bosque_buffer_30, overwrite = TRUE, 
-                  datatype = 'LOG1S', options=c("COMPRESS=DEFLATE", "NBITS=1"))
+                  datatype = 'INT1S', options=c("COMPRESS=DEFLATE", "NBITS=1"))
     })) #203.89s
   }
   
@@ -388,7 +386,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
     print(system.time({ # 50 mins
       bosques_riparios_100 <-  stack_capas_100m[[1]] & stack_capas_100m[[2]]
       writeRaster(bosques_riparios_100, bosque_buffer_100, overwrite = TRUE, 
-                  datatype = 'Byte', options=c("COMPRESS=DEFLATE", "NBITS=1"))
+                  datatype = 'INT1S', options=c("COMPRESS=DEFLATE", "NBITS=1"))
     })) # 208
     
   }
