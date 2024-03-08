@@ -123,58 +123,58 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
   # end while
   return(ans)
 }
-
-gdalPaths(help = TRUE)
-gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = TRUE, help = FALSE)
-
-
-# Evaluar si tenemos acceso a gdal_calc --
-# Validar si tenemos la libreria gdal_calc
-#  -- Dejar un espacio despues de gdal_calc --
-# execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat ', # Mantener espacio. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat
-#                    'py3_env.bat ', # Mantener espacio. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
-#                    '&& py3_env.bat ', # Mantener espacio. Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
-#                    '&& gdal_calc ') # Llamado de gdal_calc
-
-## Instrucción en QGIS 3.22.6
-## (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc'))
-## (execGDAL <- paste0('C:\"Program Files"\"QGIS 3.20.1"\OSGeo4W.bat C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && gdal_calc'))
-
-(execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
-
-## Mirar la respuesta del sistema a conexion a gdal_calc
-(gdalcalc <- (system(paste0(execGDAL, ' --help'), intern = TRUE)))
-
-## Asignar TRUE si se encuentra respuesta del sistema
-(GDAL <- ifelse(any(grep('gdal_calc.py', gdalcalc)), TRUE, FALSE))
-
-(execGDALsieve <- gsub('gdal_calc', 'gdal_sieve', execGDAL))
-(gdalsieve <- (system(paste0(execGDALsieve, ''), intern = TRUE))) ## Esta opción no necesita "--help"
-
-(execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDAL))
-(gdalproxy <- (system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
-
-
-(gdal1 <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat o-help'))
-(gdal2 <- (system(paste0(gdal1, ' --help'), intern = TRUE)))
-
-(execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
-
-##Aca la configuración para QGIS3.14, pero abajo hay instrucciones para otras versiones. #CAMBIAR ---
-
-(execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat',   'py3_env.bat && py3_env.bat && gdal_calc '))
-(execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.20.1"\\OSGeo4W.bat', 'C:\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && C:\\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && gdal_calc '))
-(execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc '))
-(execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.28.1"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && gdal_calc '))
-(execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.12"\\OSGeo4W.bat','C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && gdal_calc '))
-(execGDAL <- paste0('E:\\OSGeo4W.bat E:\\bin\\o4w_env.bat && E:\\bin\\o4w_env.bat && gdal_calc '))
-
-execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc ') 
-
-
-
-execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat ', # Mantener espacio al final. Ubicación del archivo OSGeo4W.bat que es el orquestador de ejecutables GIS00
-                   'py3_env.bat ', # Mantener espacio. Ubicación de el ejecutable que configura entorno de python. Puede llamarse tambien o4w_env.bat
-                   '&& py3_env.bat ', # Mantener espacio al . Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
-                   '&& gdal_calc ') # Llamado de gdal_calc, Dejar espacio al final
-
+# 
+# gdalPaths(help = TRUE)
+# gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = TRUE, help = FALSE)
+# 
+# 
+# # Evaluar si tenemos acceso a gdal_calc --
+# # Validar si tenemos la libreria gdal_calc
+# #  -- Dejar un espacio despues de gdal_calc --
+# # execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat ', # Mantener espacio. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat
+# #                    'py3_env.bat ', # Mantener espacio. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
+# #                    '&& py3_env.bat ', # Mantener espacio. Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
+# #                    '&& gdal_calc ') # Llamado de gdal_calc
+# 
+# ## Instrucción en QGIS 3.22.6
+# ## (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc'))
+# ## (execGDAL <- paste0('C:\"Program Files"\"QGIS 3.20.1"\OSGeo4W.bat C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && gdal_calc'))
+# 
+# (execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
+# 
+# ## Mirar la respuesta del sistema a conexion a gdal_calc
+# (gdalcalc <- (system(paste0(execGDAL, ' --help'), intern = TRUE)))
+# 
+# ## Asignar TRUE si se encuentra respuesta del sistema
+# (GDAL <- ifelse(any(grep('gdal_calc.py', gdalcalc)), TRUE, FALSE))
+# 
+# (execGDALsieve <- gsub('gdal_calc', 'gdal_sieve', execGDAL))
+# (gdalsieve <- (system(paste0(execGDALsieve, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+# 
+# (execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDAL))
+# (gdalproxy <- (system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+# 
+# 
+# (gdal1 <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat o-help'))
+# (gdal2 <- (system(paste0(gdal1, ' --help'), intern = TRUE)))
+# 
+# (execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
+# 
+# ##Aca la configuración para QGIS3.14, pero abajo hay instrucciones para otras versiones. #CAMBIAR ---
+# 
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat',   'py3_env.bat && py3_env.bat && gdal_calc '))
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.20.1"\\OSGeo4W.bat', 'C:\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && C:\\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && gdal_calc '))
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc '))
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.28.1"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && gdal_calc '))
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.12"\\OSGeo4W.bat','C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && gdal_calc '))
+# (execGDAL <- paste0('E:\\OSGeo4W.bat E:\\bin\\o4w_env.bat && E:\\bin\\o4w_env.bat && gdal_calc '))
+# 
+# execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc ') 
+# 
+# 
+# 
+# execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat ', # Mantener espacio al final. Ubicación del archivo OSGeo4W.bat que es el orquestador de ejecutables GIS00
+#                    'py3_env.bat ', # Mantener espacio. Ubicación de el ejecutable que configura entorno de python. Puede llamarse tambien o4w_env.bat
+#                    '&& py3_env.bat ', # Mantener espacio al . Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
+#                    '&& gdal_calc ') # Llamado de gdal_calc, Dejar espacio al final
+# 
