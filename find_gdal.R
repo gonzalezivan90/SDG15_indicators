@@ -110,7 +110,12 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
             (gdalgdalproxyworks <- ifelse(any(grep('Usage: gdal_proximity.py', gdalproxylog)), TRUE, FALSE))
             
             
-            ans <- list(execGDALcalc, gdalcalcworks, execGDALsieve, gdalsieveworks, execGDALproxy, gdalgdalproxyworks)
+            ans <- list(execGDALcalc = execGDALcalc, 
+                        gdalcalcworks = gdalcalcworks, 
+                        execGDALsieve = execGDALsieve, 
+                        gdalsieveworks = gdalsieveworks, 
+                        execGDALproxy = execGDALproxy, 
+                        gdalgdalproxyworks = gdalgdalproxyworks)
             break()
           }
           if (found) {break()} 
@@ -178,3 +183,4 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
 #                    '&& py3_env.bat ', # Mantener espacio al . Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
 #                    '&& gdal_calc ') # Llamado de gdal_calc, Dejar espacio al final
 # 
+
