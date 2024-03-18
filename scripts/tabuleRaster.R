@@ -2,27 +2,31 @@ tabuleRaster <- structure(
   function( # Count the pixels in a given raster
     ### This function generate a frequency table for a given raster dataset
     layer = '',      ##<<\code{character}. Raster object or raster path
-    del0 = FALSE,    ##<<\code{boolean}. Determines if 0 count  categories should me removed
+    del0 = FALSE,    ##<<\code{boolean}. Determines if 0 count categories should be removed
     useNA = "no",   ##<<\code{boolean}. Determines if include NA. Passed to rasterDT::freqDT
-    n256 = FALSE      ##<<\code{boolean}. Determines if the raster contains less than 256 unique values, with
+    n256 = FALSE      ##<<\code{boolean}. Set as TRUE if the raster contains less than 256 unique values. If so, a fast approach is used (gdalUtilities::gdalinfo)
   ) {
     
     # requires: raster, rasterDT, gdalUtilities, 
     allowedRastClass <- c('RasterLayer', 'RasterBrick', 'RasterStack')
     
-    if (!class(layer) %in% c(allowedRastClass, 'character')){
-      stop('Class not RasterLayer or character')
+    if (! class(layer)[1] %in% c(allowedRastClass, 'character')){
+      stop('Class not RasterLayer, RasterBrick, RasterStack or character')
     }
     
-    if (class(layer) %in% c('character')){
+    if (class(layer)[1] %in% c('character')){
       if (!file.exists(layer)){
         stop('File not found')
       }
     }
     
     
-    if (n256){
-      if (class(layer) %in% allowedRastClass){
+    if (n256 ){
+      if(!require(gdalUtilities)){
+        stop('This approach requires the library "gdalUtilities".\nTry to install it with: install.packages("gdalUtilities")')
+      }
+        
+      if (class(layer)[1] %in% allowedRastClass){
         if (layer[[1]]@file@name != ''){
           layerPath <- layer[[1]]@file@name
         } else {
@@ -41,16 +45,17 @@ tabuleRaster <- structure(
         (bucxml <- as.numeric(sub('buckets.+', '', grep('buckets ', gdalLog, value = TRUE)))[n])
         (minxml <- as.numeric(gsub('.+from | to.+', '', grep('buckets ', gdalLog, value = TRUE)) )[n] )
         (maxxml <- as.numeric(gsub('.+to |:', '', grep('buckets ', gdalLog, value = TRUE)))[n] )
-        (histxml <- as.numeric(strsplit(split = '[[:space:]]', gsub("^ |^  ", "", 
-                                                                    gdalLog[grep('buckets', gdalLog)[n]+1]
-                                                                    ))[[1]]))
+        (histxml <- as.numeric(
+          strsplit(split = '[[:space:]]', 
+                   gsub("^ |^  ", "", gdalLog[grep('buckets', gdalLog)[n]+1]))[[1]]))
         
         labs <- seq(from = minxml, to = maxxml, length.out = bucxml)
         # length(histxml)
         
-        df2 <- data.frame(labs, nwlab = c(ceiling(labs[1]),
-                                          round(labs[2:(bucxml-1)]),
-                                          floor(labs[bucxml])), 
+        df2 <- data.frame(labs, 
+                          nwlab = c(ceiling(labs[1]),
+                                    round(labs[2:(bucxml-1)]),
+                                    floor(labs[bucxml])), 
                           val = histxml)
         hist2 <- aggregate(df2$val, by = list(df2$nwlab), sum)
         result <- data.frame(id = hist2$Group.1, count = hist2$x, stringsAsFactors = FALSE)
@@ -71,12 +76,21 @@ tabuleRaster <- structure(
       
     } else {
       
+      if(!require(raster)){
+        stop('This approach requires the library "raster".\nTry to install it with: install.packages("raster")')
+      }
+      
+      if(!require(gdalUtilities)){
+        stop('This approach requires the library "rasterDT".\nTry to install it with: install.packages("rasterDT")')
+      }
+      
       if (class(layer) %in% c('character')){
         layer <- tryCatch(raster::stack(layer), error = function (e) stop( "Can't open raster layer"))
       }
       
+
       freqTable <-  rasterDT::freqDT(layer, useNA = useNA)
-      if (class(freqTable) == 'list'){
+      if (class(freqTable)[1] == 'list'){
         result <- lapply(freqTable, function(x){
           data.frame(id = x$ID, count = x$freq, 
                      stringsAsFactors = FALSE )
@@ -84,24 +98,33 @@ tabuleRaster <- structure(
       } else {
         result <- data.frame(id = freqTable$ID, count = freqTable$freq, stringsAsFactors = FALSE )
       }
-      
     }
     
-    # layer <- stack(multilayer)                                                                                                                                 
-    # if(inherits(layer), 'stack')                                                                                                                               
-    #   names(tabulateRaster) <-raster::names(layer)
     
-    return(result)
-    
-    # if(del0){
-    #   return(subset(result, count > 0) )
-    # } else {
-    #   return(result)
-    # }
+    ## Delete values of 0 count
+    if(del0){
+      return(subset(result, count > 0) )
+    } else {
+      return(result)
+    }
     
     ### \code{data.frame}.
   } , ex = function() {
     ## \donttest{
     ## raster_count(raster(volcano), n256 = FALSE)
     ## }
-  })
+  }
+)
+
+
+
+# ### 
+# library(gdalUtilities) 
+# library(raster)
+# library(rasterDT) 
+# 
+# (countA <- tabuleRaster(layer = raster(volcano)))
+# system.time(countB <- tabuleRaster(layer = 'C:/temp/mascara_terrestre.tif')) #515
+# system.time(countC <- tabuleRaster(layer = 'C:/temp/mascara_terrestre.tif', 
+#                                    del0 = TRUE, n256 = TRUE)) # 120
+# system.time(countD <- table(raster('C:/temp/mascara_terrestre.tif')[])) ## Error for file size
