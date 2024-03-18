@@ -11,6 +11,8 @@ source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/f
 # Si el anterior genera error por conexión a Github, entonces llamar localmente al achivo:
 # El archivo se puede descargar con la opción "Guardar como" desde el navegador, al copiar el link anterior. Es posible que el archivo descarge como R_03_tabuleRaster.R.txt
 ## source("C:/temp/Peru_fragmentacion/09_scripts/R_03_tabuleRaster.R") ## Cambiar por ruta equivalente, o agregar ".txt" al nombre ## <Dato externo original>
+# source("C:/temp/Peru_fragmentacion/09_scripts/R_03_tabuleRaster.R.txt") ## Cambiar por ruta equivalente ## <Dato externo original>
+# source("C:/temp/Peru_fragmentacion/09_scripts/find_gdal.R.txt") ## Cambiar por ruta equivalente ## <Dato externo original>
 
 
 ### 1 Definir Ruta de trabajo ----
@@ -25,14 +27,26 @@ setwd( root ) # asignar ruta de trabajo
 ## Las capas deben tener la misma proyeccion
 ## Descargar datos desde: https://geobosques.minam.gob.pe/geobosque/view/descargas.php#download
 # Bosque_No_Bosque_2020.tif
-# Perdida_2001_2020.tif --- Esta capa requiere ser del extent completo del pais
+# Perdida_2001_2020.tif
 # Bosque_No_Bosque_2020_Vector.shp
 # rios_poligonos.shp
-# Polígonos_limite_nacional
-    
+# Polígonos_limite_nacional.shp --- Esta capa requiere ser del extent completo del pais
+
+
+## Identificar archivos originales
+archivo_bosques <- '01_datos-originales/Bosque_No_Bosque_2022.tif' ## <Dato externo original>
+file.exists(archivo_bosques)
+archivo_perdida <- '01_datos-originales/Perdida_2001_2022.tif' ## <Dato externo original>
+file.exists(archivo_perdida)
+poligonos_rios <- '01_datos-originales\\rios_poligonos.shp' ## <Dato externo original>
+file.exists(poligonos_rios)
+poligonos_limites <- '01_datos-originales\\Polígonos_limite_nacional.shp' ## <Dato externo original>
+file.exists(poligonos_limites)
+
+## Crear subcarpetas
 
 outDirs <- c("02_bosques-filtrados", "03_bosques-anuales", "04_bosques-reclasificados",  
-             "06_resultados-fragmentacion", "07_transiciones" )
+             "05_resultados-fragmentacion")
 
 sapply(outDirs, dir.create, recursive = TRUE) # Algunos warnings. No es grave
 list.dirs(path = '.', full.names = TRUE, recursive = FALSE)
@@ -138,13 +152,7 @@ if (!recortar_analisis) {
 }
 
 
-## Identificar archivos originales
-
-archivo_bosques <- '01_datos-originales/Bosque_No_Bosque_2021.tif' ## <Dato externo original>
-archivo_perdida <- '01_datos-originales/Perdida_2001_2021.tif' ## <Dato externo original>
-file.exists(archivo_bosques)
-file.exists(archivo_perdida)
-
+## Obtener extents de capas 
 (info_perdida <- raster::raster(archivo_perdida)) # 
 (extent_completo <- c(xmn = info_perdida@extent@xmin, 
                      ymn = info_perdida@extent@ymin, 
@@ -156,6 +164,12 @@ file.exists(archivo_perdida)
                      ymn = info_bosques@extent@ymin, 
                      xmx = info_bosques@extent@xmax, 
                      ymx = info_bosques@extent@ymax))
+
+(info_nacional <- raster::shapefile(poligonos_limites)) # 
+(extent_nacional <- c(xmn = info_nacional@bbox['x', 'min'], 
+                     ymn = info_nacional@bbox['y', 'min'], 
+                     xmx = info_nacional@bbox['x', 'max'], 
+                     ymx = info_nacional@bbox['y', 'max']))
 
 
 
@@ -218,7 +232,6 @@ if(!file.exists(archivo_bosques_inicial) ){
 }
 
 ## Crear archivos de linea base
-archivo_bosques_inicial <- '02_bosques-filtrados\\Bosque_inicial_2000.tif' ## Usar doble \ en este caso
 archivo_perdida_inicial <- '02_bosques-filtrados\\Perdida_2001_2021_llenado0.tif'
 
 ## Cambiar datos nulos a 0 en capa raster de perdida de bosque
@@ -244,10 +257,6 @@ if (! file.exists(archivo_perdida_inicial) ){
 
 ## Crear capas de máscara con pixeles terrrestres: limites nacionales - ríos
 
-poligonos_rios <- '01_datos-originales\\rios_poligonos.shp' ## <Dato externo original>
-file.exists(poligonos_rios)
-poligonos_limites <- '01_datos-originales\\Polígonos_limite_nacional.shp' ## <Dato externo original>
-file.exists(poligonos_limites)
 mascara_terrestre <- '02_bosques-filtrados\\mascara_terrestre.tif'
 mascara_terrestre_01 <- '02_bosques-filtrados\\mascara_terrestre01.tif' ## Corregido sin valores negativos
 mascara_terrestre0 <- '02_bosques-filtrados\\mascara_terrestre0.tif' # Final con extensión del analisis 
@@ -259,7 +268,7 @@ if (! file.exists(mascara_terrestre_01) ){
     print(system.time(
       gdalUtilities::gdal_rasterize(src_datasource = poligonos_limites, 
                                     dst_filename = mascara_terrestre,
-                                    te = extent_completo, ## Extent completo
+                                    te = extent_nacional, ## Extent nacional
                                     tr = res(info_perdida),
                                     burn = 1, init = 0, 
                                     ot = 'Int16',
