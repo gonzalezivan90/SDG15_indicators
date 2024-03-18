@@ -406,7 +406,7 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
   
 
 
-  ## Recuperar fragmentos pequeños y no cosniderar rios o limites como fragmentacion  
+  ## Recuperar fragmentos pequeños y no considerar rios o limites como fragmentacion  
   (bosques_refinados <- paste0('04_bosques-reclasificados/', '/bosqueRefinado_', anio, '.tif' ))
   if (!file.exists(bosques_refinados) & file.exists(nombre_raster_bosque) & file.exists(bosques_rellenados)) {
     (cmd <- gsub(fixed = TRUE, '/', '\\', 
@@ -466,9 +466,11 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
 } # Aparecera en error si no habilitamos el "for" 
 
 
+## Calcula pixeles terrestres totales del pais
 (area_terrestre <- tabuleRaster(mascara_terrestre_01, del0 = TRUE, n256 = TRUE))
 # 1 == 1398064402
 
+## Extraer estadisticas de capa de bosques anuales
 (archivos_bosques <- list.files(path = '03_bosques-anuales/', pattern = 'bosqueFecha.+.tif$', full.names = TRUE))
 areas_bosques <- lapply(archivos_bosques, function(x){
   print(x)
@@ -476,7 +478,7 @@ areas_bosques <- lapply(archivos_bosques, function(x){
                    tabuleRaster(x, del0 = TRUE, n256 = TRUE))
 })
 
-
+## Extraer estadisticas de capa de bosques nucelos anuales
 (archivos_nucleos <- list.files(path = '05_resultados-fragmentacion/', pattern = 'bosqueNucleo.+.tif$', full.names = TRUE))
 areas_nucleos <- lapply(archivos_nucleos, function(x){
   print(x)
@@ -485,6 +487,7 @@ areas_nucleos <- lapply(archivos_nucleos, function(x){
 })
 
 
+## Compilar tablas
 tabla_cifras <- rbind(do.call(rbind, areas_nucleos), do.call(rbind, areas_bosques))
 tabla_parcial <- xtabs(data = tabla_cifras, count ~ anio + id + tipo)
 
