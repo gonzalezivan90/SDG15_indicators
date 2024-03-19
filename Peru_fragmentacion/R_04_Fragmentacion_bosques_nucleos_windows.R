@@ -176,15 +176,7 @@ if (!recortar_analisis) {
 
 if (!recortar_analisis) {
   ## Extent completo
-  (extent_numerico <- extent_completo)
-  
-  (info_perdida <- raster::raster(archivo_perdida)) # 
-  extent_numerico_perd <- c(info_perdida@extent@xmin, 
-                            info_perdida@extent@ymin, 
-                            info_perdida@extent@xmax, 
-                            info_perdida@extent@ymax)
-  names(extent_numerico_perd) <- c('xmn', 'ymn', 'xmx', 'ymx')
-  extent_numerico <- extent_numerico_perd 
+  (extent_numerico <- extent_nacional)
   
 } else {
   
@@ -259,7 +251,7 @@ if (! file.exists(archivo_perdida_inicial) ){
 
 mascara_terrestre <- '02_bosques-filtrados\\mascara_terrestre.tif'
 mascara_terrestre_01 <- '02_bosques-filtrados\\mascara_terrestre01.tif' ## Corregido sin valores negativos
-mascara_terrestre0 <- '02_bosques-filtrados\\mascara_terrestre0.tif' # Final con extensión del analisis 
+mascara_terrestre0 <- '02_bosques-filtrados\\mascara_terrestre_extent_analisis.tif' ## Recortadoa bosques
 
 
 ## Crear máscara de pixeles terrestres
@@ -275,15 +267,15 @@ if (! file.exists(mascara_terrestre_01) ){
                                     co = c("COMPRESS=DEFLATE")
       ))) # 145s
     
-    ## Eliminamos los rios. gdalUtils::gdal_rasterize sí tiene el parametro add
+    ## Eliminamos los rios. Probar con gdalUtils::gdal_rasterize o gdalUtilities::gdal_rasterize sí genera error
     print(system.time(
-      gdalUtils::gdal_rasterize(src_datasource = poligonos_rios, 
+      gdalUtilities::gdal_rasterize(src_datasource = poligonos_rios, 
                                     dst_filename = mascara_terrestre, 
                                     at = TRUE, 
                                     add = TRUE,  burn = -1)
     )) ## 201
     
-    ## Corregimso valores negativos
+    ## Corregimos valores negativos
     if (! file.exists(mascara_terrestre_01) ){
       print(system.time(
         gdalUtilities::gdalwarp(srcnodata = 255, dstnodata = 255, # dato que se usa como nodata original, es decir que el 0 sea escrito
@@ -299,7 +291,6 @@ if (! file.exists(mascara_terrestre_01) ){
 (pixeles_mascara <- tabuleRaster(mascara_terrestre_01, del0 = TRUE, n256 = TRUE))
 ## Debe ser 1398064402
 
-mascara_terrestre0 <- '02_bosques-filtrados\\mascara_terrestre0.tif' ## Corregido
 ## Extraer la extensión de las zonas donde hay bosque en el pais
 if(!file.exists(mascara_terrestre0)){
   print(system.time(
@@ -321,11 +312,13 @@ raster_perdida <- raster(archivo_perdida_inicial)
 fechas_unicas_pixeles <- tabuleRaster(archivo_perdida_inicial, del0 = TRUE, n256 = TRUE)
 (fechas_unicas <- fechas_unicas_pixeles$id)
 
+## Borrar archivos intermedios grandes? 
+borrar_archivos_intermedios <- TRUE
+
 ## Iterar sobre los bosques 
 ## Las siguientes intrucciones se repetiran para cada año entre 2000 y 2020
 
 f = 10 ## Inicializamos para hacer la prueba con una sola 
-
 for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILITAR PARA CORRER PARA TODOS LOS AÑOS
   
   ## Definir valores en cada paso, como anio y nombres de capas
@@ -399,7 +392,9 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
       }
       rx <- tryCatch(raster::raster(bosques_rellenados), error = function(e) NULL)
       if ( class(rx) == 'RasterLayer' & file.size(bosques_rellenados) > 100000000 ){
-        # file.remove(bosques_rellenados_pesado)  ## Borrar archivo si pesa mucho
+        if( borrar_archivos_intermedios)
+          file.remove(bosques_rellenados_pesado)  ## Borrar archivo si pesa mucho
+      }
       }
     }
   }
