@@ -1,3 +1,11 @@
+## Codigo creado por Ivan Gonzalez [github.com/gonzalezivan90]
+## Buscar la version mas reciente en la página: https://github.com/gonzalezivan90/SDG15_indicators
+## Script para calcular bosques nucleo en el Perú usando datos oficiales, y en forma de indicador para el
+## reporte de indicadores complementarios ODS/SDG15.
+##  Contacto: gonzalezgarzonivan@gmail.com / ig299@nau.edu
+
+
+
 ## Cargar librería --- Todo debería ser TRUE. Usar archivo de instalación si no.
 c('raster', 'gdalUtilities', 'gdalUtils', 'devtools') %in% rownames(installed.packages())
 
@@ -7,7 +15,9 @@ library(gdalUtils) # Conexion a suit GDAL/OGR para ejecutar externo
 
 ## Cargar funcion de conteo de pixeles
 source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/Ecuador_fragmentacion/R_03_tabuleRaster.R")
+## Cargar funcion para encontrar los ejecutables de GDAL en el computador
 source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/find_gdal.R")
+
 # Si el anterior genera error por conexión a Github, entonces llamar localmente al achivo:
 # El archivo se puede descargar con la opción "Guardar como" desde el navegador, al copiar el link anterior. Es posible que el archivo descarge como R_03_tabuleRaster.R.txt
 ## source("C:/temp/Peru_fragmentacion/09_scripts/R_03_tabuleRaster.R") ## Cambiar por ruta equivalente, o agregar ".txt" al nombre ## <Dato externo original>
@@ -33,15 +43,15 @@ setwd( root ) # asignar ruta de trabajo
 # Polígonos_limite_nacional.shp --- Esta capa requiere ser del extent completo del pais
 
 
-## Identificar archivos originales
+## Identificar archivos originales -- TODOS deben se TRUE
 archivo_bosques <- '01_datos-originales/Bosque_No_Bosque_2022.tif' ## <Dato externo original>
-file.exists(archivo_bosques)
+file.exists(archivo_bosques) # - debe se TRUE
 archivo_perdida <- '01_datos-originales/Perdida_2001_2022.tif' ## <Dato externo original>
-file.exists(archivo_perdida)
+file.exists(archivo_perdida) # - debe se TRUE
 poligonos_rios <- '01_datos-originales\\rios_poligonos.shp' ## <Dato externo original>
-file.exists(poligonos_rios)
+file.exists(poligonos_rios) # - debe se TRUE
 poligonos_limites <- '01_datos-originales\\Polígonos_limite_nacional.shp' ## <Dato externo original>
-file.exists(poligonos_limites)
+file.exists(poligonos_limites) # - debe se TRUE
 
 ## Crear subcarpetas
 
@@ -60,7 +70,7 @@ root2[grep(' ', root2)] <- paste0('"', root2[grep(' ', root2)] ,'"')
 (root2 <- gsub(pattern = '/', replacement = '\\', x = root2) )
 
 
-## vERSION ANTIGUA -- LA FUNCION gdalPaths los reemplaza
+## VERSION ANTIGUA -- LA FUNCION gdalPaths los reemplaza
 # Evaluar si tenemos acceso a gdal_calc --
 # Validar si tenemos la libreria gdal_calc
 #  -- Dejar un espacio despues de gdal_calc --
@@ -68,8 +78,6 @@ root2[grep(' ', root2)] <- paste0('"', root2[grep(' ', root2)] ,'"')
 #                    'py3_env.bat ', # Mantener espacio. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
 #                    '&& py3_env.bat ', # Mantener espacio. Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
 #                    '&& gdal_calc ') # Llamado de gdal_calc
-
-## Instrucción en QGIS 3.22.6
 ## (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc'))
 ## (execGDAL <- paste0('C:\"Program Files"\"QGIS 3.20.1"\OSGeo4W.bat C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && C:\"Program Files"\"QGIS 3.3.20.1"\bin\o4w_env.bat && gdal_calc'))
 ## (execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
@@ -155,9 +163,9 @@ if (!recortar_analisis) {
 ## Obtener extents de capas 
 (info_perdida <- raster::raster(archivo_perdida)) # 
 (extent_completo <- c(xmn = info_perdida@extent@xmin, 
-                     ymn = info_perdida@extent@ymin, 
-                     xmx = info_perdida@extent@xmax, 
-                     ymx = info_perdida@extent@ymax))
+                      ymn = info_perdida@extent@ymin, 
+                      xmx = info_perdida@extent@xmax, 
+                      ymx = info_perdida@extent@ymax))
 
 (info_bosques <- raster::raster(archivo_bosques)) # 
 (extent_bosques <- c(xmn = info_bosques@extent@xmin, 
@@ -167,11 +175,9 @@ if (!recortar_analisis) {
 
 (info_nacional <- raster::shapefile(poligonos_limites)) # 
 (extent_nacional <- c(xmn = info_nacional@bbox['x', 'min'], 
-                     ymn = info_nacional@bbox['y', 'min'], 
-                     xmx = info_nacional@bbox['x', 'max'], 
-                     ymx = info_nacional@bbox['y', 'max']))
-
-
+                      ymn = info_nacional@bbox['y', 'min'], 
+                      xmx = info_nacional@bbox['x', 'max'], 
+                      ymx = info_nacional@bbox['y', 'max']))
 
 
 if (!recortar_analisis) {
@@ -199,12 +205,14 @@ if (!recortar_analisis) {
 archivo_bosques_inicial <- '02_bosques-filtrados\\Bosque_inicial_2000.tif' ## Usar doble \ en este caso
 raster_inicial <- raster(archivo_bosques)
 
+## En QGIS: Revisar valores de bosque(5) y deforestacion (5) para la capa original de bosques
+
 if(!file.exists(archivo_bosques_inicial) ){
   if (!GDAL){
     ## Opcion R
     print(system.time(
       if (! file.exists(archivo_inicial_0) ){
-        bosque_inicial2000 <- 1 + Which(raster_inicial == 3 | raster_inicial == 1) # Escoger valores de bosque(3) y deforestacion (1)
+        bosque_inicial2000 <- 1 + Which(raster_inicial == 3 | raster_inicial == 5) # Escoger valores de bosque(5) y deforestacion (5)
         # plot(bosque_inicial2000)
         writeRaster(x = bosque_inicial2000, filename = archivo_bosques_inicial,
                     datatype = 'Byte', options=c("COMPRESS=DEFLATE", "NBITS=1"))
@@ -215,13 +223,14 @@ if(!file.exists(archivo_bosques_inicial) ){
     print(system.time(
       system(
         paste0(execGDAL, 
-               ' --calc=" (1*(logical_or(A==3, A==1)))" ', # Escoger valores de bosque(3) y deforestacion (1) 
+               ' --calc=" (1*(logical_or(A==3, A==5)))" ', # Escoger valores de bosque(3) y deforestacion (5) 
                '-A ', root2, '\\', archivo_bosques,
                ' --outfile=', root2, '\\', archivo_bosques_inicial,
                ' --type=Byte --NoDataValue=255 --co="NBITS=1" --co="COMPRESS=DEFLATE" --quiet'
         )))) # 7500.20s   
   }
 }
+## En QGIS: Revisar capa creada
 
 ## Crear archivos de linea base
 archivo_perdida_inicial <- '02_bosques-filtrados\\Perdida_2001_2021_llenado0.tif'
@@ -244,11 +253,11 @@ if (! file.exists(archivo_perdida_inicial) ){
                             ot = 'Byte')
   )) #70
 }
+## En QGIS: Revisar capa creada
 
 
 
 ## Crear capas de máscara con pixeles terrrestres: limites nacionales - ríos
-
 mascara_terrestre <- '02_bosques-filtrados\\mascara_terrestre.tif'
 mascara_terrestre_01 <- '02_bosques-filtrados\\mascara_terrestre01.tif' ## Corregido sin valores negativos
 mascara_terrestre0 <- '02_bosques-filtrados\\mascara_terrestre_extent_analisis.tif' ## Recortadoa bosques
@@ -286,7 +295,9 @@ if (! file.exists(mascara_terrestre_01) ){
     }
   }
 }
-  
+## En QGIS: Revisar capa creada
+
+
 ## Obtener pixeles terrestres
 (pixeles_mascara <- tabuleRaster(mascara_terrestre_01, del0 = TRUE, n256 = TRUE))
 ## Debe ser 1398064402
@@ -302,8 +313,9 @@ if(!file.exists(mascara_terrestre0)){
                             ot = 'Byte', co = c("COMPRESS=DEFLATE", "NBITS=1"))
   ))
 }
+## En QGIS: Revisar capa creada
 
-  
+
 
 ### 3 Generar capas anuales ----
 
@@ -339,14 +351,13 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
     } else {
       ## Hecho con gdal_calc.py
       (cmd <- gsub(fixed = TRUE, '/', '\\', 
-         paste0(execGDAL,
-                ' --calc=" A-(1*(logical_and(B!=0,B<=', anio2, ')))" ',
-                '-A ', root2, '\\', archivo_bosques_inicial,
-                ' -B ', root2, '\\', archivo_perdida_inicial , 
-                ' --outfile=', root2, '\\', nombre_raster_bosque,
-                ' --type=Byte --NoDataValue=255 --co="NBITS=1" --co="COMPRESS=DEFLATE" --quiet'
-                # 
-         ) 
+                   paste0(execGDAL,
+                          ' --calc=" A-(1*(logical_and(B!=0,B<=', anio2, ')))" ',
+                          '-A ', root2, '\\', archivo_bosques_inicial,
+                          ' -B ', root2, '\\', archivo_perdida_inicial , 
+                          ' --outfile=', root2, '\\', nombre_raster_bosque,
+                          ' --type=Byte --NoDataValue=255 --co="NBITS=1" --co="COMPRESS=DEFLATE" --quiet'
+                   ) 
       ))
       
       print(system.time( 
@@ -354,6 +365,7 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
       ))
     }
   }
+  ## En QGIS: Revisar capa creada
   
   
   ## Eliminar areas pequeñas -- microperforaciones
@@ -373,9 +385,7 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
                    ) 
       ))
       print(system.time(system(cmd)) )  #  170.97s 
-      
     }
-    
     
     ## Crear archivo mas liviano
     if (!file.exists(bosques_rellenados) ){
@@ -388,19 +398,19 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
                                                         dst_dataset = bosques_rellenados,
                                                         ot = 'Byte', co = "COMPRESS=DEFLATE")
         ))
-        
       }
       rx <- tryCatch(raster::raster(bosques_rellenados), error = function(e) NULL)
       if ( class(rx) == 'RasterLayer' & file.size(bosques_rellenados) > 100000000 ){
         if( borrar_archivos_intermedios)
           file.remove(bosques_rellenados_pesado)  ## Borrar archivo si pesa mucho
       }
-      }
     }
   }
+  ## En QGIS: Revisar capa creada
   
-
-
+  
+  
+  
   ## Recuperar fragmentos pequeños y no considerar rios o limites como fragmentacion  
   (bosques_refinados <- paste0('04_bosques-reclasificados/', '/bosqueRefinado_', anio, '.tif' ))
   if (!file.exists(bosques_refinados) & file.exists(nombre_raster_bosque) & file.exists(bosques_rellenados)) {
@@ -415,11 +425,13 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
     ))
     print(system.time(system(cmd)) ) # 611 || 2870.31 ~ 50min
   }
+  ## En QGIS: Revisar capa creada
   
+  
+  ## Categorias a usar en las distancias
   ## 0 pixeles que fragmentan
   ## 1 para bosque
   ## 2 para agua y limites nacionales que no fragmentan
-  
   
   ## Crear el buffer de distancia
   (distancia_bosques <- paste0('04_bosques-reclasificados/', '/distanciaABosques_', anio, '.tif' ))
@@ -436,10 +448,9 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
                         ' -fixed-buf-val 0 ', # Valores a dejar dentro del buffer
                         ' -ot Byte -co NBITS=1 -co COMPRESS=DEFLATE')
     ))
-    
     print(system.time(system(cmd)) ) # 
-    
   }
+  ## En QGIS: Revisar capa creada
   
   
   ## Crear bosque nucleo
@@ -455,9 +466,9 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
     ))
     print(system.time(system(cmd)) ) # 611 / 270 co
   }
+  ## En QGIS: Revisar capa creada
   
   print ( paste('   -- Guardado fecha ', anio ) )
-
 } # Aparecera en error si no habilitamos el "for" 
 
 
@@ -498,5 +509,5 @@ tabla_final # ver resultado
 
 ## Guardar archivo en 2 formatos, con mismos valores, pr cuestion de formatos internos de cada computador
 print(getwd()) ## aca se guardan los resultados
-write.csv(tabla_final, 'tabla_final_fragmentacion__sep-coma.csv')
-write.csv2(tabla_final, 'tabla_final_fragmentacion__sep-puntoycoma.csv')
+write.csv(x = tabla_final, file = paste0('tabla_final_fragmentacion__sep-coma_', Sys.Date(), '.csv'))
+write.csv2(x = tabla_final, file = paste0('tabla_final_fragmentacion__sep-puntoycoma_', Sys.Date(), '.csv'))
