@@ -2,7 +2,9 @@
 ## Buscar la version mas reciente en la página: https://github.com/gonzalezivan90/SDG15_indicators
 ## Script para calcular bosques nucleo en el Perú usando datos oficiales, y en forma de indicador para el
 ## reporte de indicadores complementarios ODS/SDG15.
-##  Contacto: gonzalezgarzonivan@gmail.com / ig299@nau.edu
+##    Contacto: gonzalezgarzonivan@gmail.com / ig299@nau.edu
+## Obtener datos aca: https://geobosques.minam.gob.pe/
+
 
 
 
