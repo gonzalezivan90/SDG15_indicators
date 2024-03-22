@@ -460,7 +460,7 @@ for( f in (1:length(fechas_unicas))){ # f = 10 # } -------- DESCOMENTAR Y HABILI
   if (!file.exists(bosque_nucleo) ) {
     (cmd <- gsub(fixed = TRUE, '/', '\\', 
                  paste0(execGDAL,
-                        ' -A ', root2, '\\', nombre_raster_bosque, 
+                        ' -A ', root2, '\\', bosques_refinados, 
                         ' -B ', root2, '\\', distancia_bosques, 
                         ' --outfile=', root2, '\\', bosque_nucleo,
                         ' --calc="(logical_and(A==1 , B ==1 ))" ',

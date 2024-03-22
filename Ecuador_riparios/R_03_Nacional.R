@@ -1,5 +1,11 @@
 ## Creado por Ivan Gonzalez [gonzalezgarzonivan@gmail.com]
 ## Estudiante doctorado en Ecoinformática @ NAU - ig299@nau.edu
+## Buscar la version mas reciente en la página: https://github.com/gonzalezivan90/SDG15_indicators
+## Script para calcular bosques riparios en Ecuador usando datos oficiales, y en forma de indicador para el
+## reporte de indicadores complementarios ODS/SDG15.
+##    Contacto: gonzalezgarzonivan@gmail.com / ig299@nau.edu
+## Obtener datos aca: http://ide.ambiente.gob.ec:8080/mapainteractivo/
+
 
 
 ## AVISOS: ----
@@ -28,20 +34,42 @@
 
 ## Cargar librería ---
 
-library(raster) # Raster
-library(rgdal)  # Funciones de GDAL / OGR para R
+## Cargar librería --- Todo debería ser TRUE. Usar archivo de instalación si no.
+c('raster', 'gdalUtilities', 'gdalUtils', 'devtools') %in% rownames(installed.packages())
+
+# library(raster) # Raster
+# library(rgdal)  # Funciones de GDAL / OGR para R
+library(terra) # Funciones de capas raster
+library(sf)  # Funciones de capas vectoriales
 library(foreign) # Cargar las tablas .dbf de shapefiles
 library(gdalUtilities) # Conexion a suit GDAL/OGR para ejecutar externo 
 library(gdalUtils) # Conexion a suit GDAL/OGR para ejecutar externo 
 
+## Leer funciones
+## Cargar funcion de conteo de pixeles
+source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/scripts/tabuleRaster.R")
+## Cargar funcion para encontrar los ejecutables de GDAL en el computador
+source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/scripts/find_gdal.R")
 
+# Si el anterior genera error por conexión a Github, entonces llamar localmente al achivo:
+# El archivo se puede descargar con la opción "Guardar como" desde el navegador, al copiar el link anterior. Es posible que el archivo descarge como R_03_tabuleRaster.R.txt
+## source("C:/temp/tabuleRaster.R") ## Cambiar por ruta equivalente, o agregar ".txt" al nombre ## <Dato externo original>
+# source("C:/temp/tabuleRaster.R.txt") ## Cambiar por ruta equivalente ## <Dato externo original>
+# source("C:/temp/find_gdal.R.txt") ## Cambiar por ruta equivalente ## <Dato externo original>
+
+
+
+# Buscar GDAL en nuestro computador
+gdalPaths(help = TRUE)
+gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = FALSE, help = FALSE)
+
+(execGDAL <- gdal$execGDALcalc)
 
 ## Definir Ruta de trabajo ----
 ## 'C:/temp/Ecuador_riparios' Es la carpeta del proyecto. Esta puede SI PUEDE en cada computador
-carpeta_trabajo <- 'C:/temp/Ecuador_riparios/' ####### CAMBIAR ---
+carpeta_trabajo <- 'H:/tempH/Ecuador_riparios/' ####### CAMBIAR ---
 dir.create(paste0(carpeta_trabajo, '04_calculoNacional/01_insumos'), recursive = TRUE) ## Crear la carpeta si no existe
 file.exists(paste0(carpeta_trabajo, '04_calculoNacional/01_insumos')) ## Debe ser TRUE 
-
 
 
 ## '04_calculoNacional' es la carpeta de calculo nacional. Esta ruta NO PUEDE cambiar y debe mantenerse igual
@@ -51,11 +79,22 @@ setwd( root ) # asignar ruta de trabajo
 list.dirs(recursive = FALSE) # Revisar carpetas existentes
 
 
+## Corregir ruta si tiene espacios, para usar en gdal_calc
+root2 <- strsplit(root, '/')[[1]]
+root2[grep(' ', root2)] <- paste0('"', root2[grep(' ', root2)] ,'"') 
+(root2 <- gsub(pattern = '/', replacement = '\\', 
+               x = paste0(paste0(root2, collapse = '/'), '/'), fixed = TRUE))
+(root2 <- gsub(pattern = '/', replacement = '\\', x = root2) )
+
+
+
 ## Acá se deben ubicar los archivos originales descomprimidos:
-paste0(carpeta_trabajo, '01_insumos/')
+paste0(root, '01_insumos/')
+list.files(paste0(root, '01_insumos/')) # Archivos actuales
 
 ## Lo siguiente debe ser TRUE y no FALSE, Se revisa que existan las capas necesarias. NO puede ser FALSE.
-(condicion <- all( c('v_ff010_cobertura_vegetal_1990_aPolygon.shp', # Bosque en SHP
+(condicion <- all( 
+  c('v_ff010_cobertura_vegetal_1990_aPolygon.shp', # Bosque en SHP
                      'v_ff010_cobertura_vegetal_2000_aPolygon.shp', # Bosque en SHP
                      'v_ff010_cobertura_vegetal_2008_aPolygon.shp', # Bosque en SHP
                      'v_ff010_cobertura_vegetal_2014_aPolygon.shp', # Bosque en SHP
@@ -65,16 +104,17 @@ paste0(carpeta_trabajo, '01_insumos/')
                      'ORGANIZACION TERRITORIAL PROVINCIAL.shp', # Provincias
                      'Rio_l_250K_ECU_IGM.shp', # Rios en lineas
                      'Rio_a_250K_ECU_IGM.shp' # Rios en poligonos
-) %in% list.files(paste0(root, '/01_insumos'))))
+) %in% list.files(paste0(root, '/01_insumos'))
+))
 
-
-
+## Revisar directorios
 list.dirs(path = paste0(carpeta_trabajo, '04_calculoNacional/'), 
           full.names = TRUE, recursive = FALSE)
 
 
-outDirs <- c('01_insumos', '02_bosques-filtrados', '03_bosques-raster', '04_rios-buffer',
-             '05_rios-raster', '06_cruce-bosques-riparios')
+## Crear directorios
+outDirs <- c('01_insumos', '02_rios-buffer', '03_rios-raster',
+             '04_bosques-filtrados', '05_bosques-raster', '06_cruce-bosques-riparios')
 sapply(outDirs, dir.create, recursive = TRUE) # Algunos warnings. No es grave
 
 
@@ -83,17 +123,22 @@ folder_bosques <- '01_insumos'
 (archivos_bosques <- list.files(path = folder_bosques, 
                                 pattern = '^v_ff.+shp$', full.names = TRUE))
 
+# Extraemos extent nacional
 (info_bosques <- tryCatch(gdalUtils::ogrinfo(archivos_bosques[1], so = TRUE, al = TRUE), error = function(e) NULL))
 if(!is.null(info_bosques)){
   (extent_bosques <- grep('Extent', info_bosques, value = TRUE))
   (extent_sin_texto <- gsub('[a-zA-Z]|\\)|\\(|-|:|: |,|^ ', '', extent_bosques) )
   (extent_numerico <- as.numeric(strsplit( gsub('  ', ' ', 
                                                 extent_sin_texto), ' ')[[1]] ))
+  names(extent_numerico) <- c("xmin", "ymin", "xmax", "ymax")
 } else {
   ## En caso de error con la linea 25 gdalUtils::ogrinfo
-  (info_bosques <- rgdal::ogrInfo(archivos_bosques[1]))
-  (extent_numerico <- info_bosques$extent)
+  (polygon_bosques <- tryCatch( sf::read_sf(archivos_bosques[1]) , error = function(e) NULL))
+  (extent_numerico <-  sf::st_bbox(polygon_bosques))
 }
+
+## Extent de trabajo
+extent_numerico
 
 
 ## Rios ------
@@ -102,8 +147,8 @@ file.exists( ruta_rios ) # Debe ser TRUE
 ruta_rios_pol <- '01_insumos/Rio_a_250K_ECU_IGM.shp' # < Archivo externo >
 file.exists( ruta_rios_pol ) # Debe ser TRUE
 
-
-rios_buffer1m <-  paste0('04_rios-buffer/', 'rioslineasbuffer1m.shp')
+# Buffer de 1m a rios en lineas
+rios_buffer1m <-  paste0('02_rios-buffer/', 'rioslineasbuffer1m.shp')
 if ( ! file.exists(rios_buffer1m) ){
   system.time(
     gdalUtilities::ogr2ogr(t_srs = 'EPSG:32717',
@@ -118,7 +163,7 @@ if ( ! file.exists(rios_buffer1m) ){
 
 
 # Unir las capas de rios en poligonos y líneas (su buffer)
-archivo_rios_poligonos <-  paste0('04_rios-buffer/', 'riospoligonos.shp')
+archivo_rios_poligonos <-  paste0('02_rios-buffer/', 'riospoligonos.shp')
 if ( ! file.exists(archivo_rios_poligonos) ){
   
   ## Creamos una capa de rios poligonos igual a la de navegables
@@ -142,7 +187,7 @@ if ( ! file.exists(archivo_rios_poligonos) ){
 
 
 ## Buffer rios ------
-archivo_buffer_30 <-  paste0('04_rios-buffer/', 'buffer30.shp')
+archivo_buffer_30 <-  paste0('02_rios-buffer/', 'buffer30.shp')
 
 if ( ! file.exists(archivo_buffer_30) ){
   print(system.time(
@@ -155,7 +200,7 @@ if ( ! file.exists(archivo_buffer_30) ){
 }
 
 
-archivo_buffer_100 <-  paste0('04_rios-buffer/', 'buffer100.shp')
+archivo_buffer_100 <-  paste0('02_rios-buffer/', 'buffer100.shp')
 
 if (!file.exists(archivo_buffer_100)){
   print(system.time(
@@ -171,11 +216,11 @@ if (!file.exists(archivo_buffer_100)){
 
 ## Crear capa raster de buffers de 30 y 10m
 
-archivo_buffer_30_neg <- paste0('05_rios-raster/', 'buffer30neg.tif')
-archivo_buffer_100_neg <- paste0('05_rios-raster/', 'buffer100neg.tif')
+archivo_buffer_30_neg <- paste0('03_rios-raster/', 'buffer30neg.tif')
+archivo_buffer_100_neg <- paste0('03_rios-raster/', 'buffer100neg.tif')
 
-archivo_raster_buffer_30 <- paste0('05_rios-raster/', 'buffer30.tif')
-archivo_raster_buffer_100 <- paste0('05_rios-raster/', 'buffer100.tif')
+archivo_raster_buffer_30 <- paste0('03_rios-raster/', 'buffer30.tif')
+archivo_raster_buffer_100 <- paste0('03_rios-raster/', 'buffer100.tif')
 
 
 if (!file.exists(archivo_buffer_30_neg)){
@@ -192,9 +237,10 @@ if (!file.exists(archivo_buffer_30_neg)){
   
   ## Quitar los cuerpos permanentes de agua - rasterizar con valores negativos
   print(system.time(
-    gdalUtilities::gdal_rasterize(src_datasource = ruta_rios_pol,
+    gdalUtils::gdal_rasterize(src_datasource = ruta_rios_pol,
                               dst_filename = archivo_buffer_30_neg,  
-                              add = TRUE, burn = -1)
+                              add = TRUE, 
+                              burn = -1)
   )) # 60seg
   
   ## Convertir en 1 y 0 comprimidos
@@ -217,7 +263,7 @@ if (!file.exists(archivo_buffer_100_neg)){
   )) # 14seg
   
   ## Quitar los cuerpos permanentes de agua - rasterizar con valores negativos
-  gdalUtilities::gdal_rasterize(src_datasource = ruta_rios_pol,
+  gdalUtils::gdal_rasterize(src_datasource = ruta_rios_pol,
                             dst_filename = archivo_buffer_100_neg,  
                             add = TRUE, burn = -1)
   
@@ -231,52 +277,36 @@ if (!file.exists(archivo_buffer_100_neg)){
 
 
 ## Extraer estadísticas ----
-system.time(estadisticas_buffer_30m <- capture.output(
-  gdalUtilities::gdalinfo(archivo_raster_buffer_30, stats = TRUE, checksum = TRUE) ))
+(estadisticas_buffer_30m <- tabuleRaster(archivo_raster_buffer_30, n256 = TRUE, del0 = TRUE)) 
+(pixeles_zonas_riparias_30 <- subset(estadisticas_buffer_30m, id == 1)$count)
 
-(dimensiones_buff_30 <- as.numeric(strsplit(gsub('[[:alpha:]]| ','', 
-                                                 grep('Size is', estadisticas_buffer_30m, value = TRUE) ),
-                                            ",")[[1]]))
-(celdas_buff_30 <- Reduce(f = '*', x = dimensiones_buff_30))
-(promedio_buff_30 <- as.numeric(gsub(  "[^[:alnum:]\\-\\.\\s]|[[:alpha:]]", "",
-                                       grep('STATISTICS_MEAN', 
-                                            estadisticas_buffer_30m, value = TRUE)) ) )
-(pixeles_zonas_riparias_30 <- celdas_buff_30 * promedio_buff_30)
-
-
-estadisticas_buffer_100m <- capture.output(
-  gdalUtilities::gdalinfo(archivo_raster_buffer_100, stats = TRUE, checksum = TRUE) )
-
-dimensiones_buff_100 <- as.numeric(
-  strsplit(gsub('[[:alpha:]]| ','', 
-                grep('Size is', estadisticas_buffer_100m, value = TRUE) ),
-           ",")[[1]])
-
-celdas_buff_100 <- Reduce(f = '*', x = dimensiones_buff_100)
-(promedio_buff_100 <- as.numeric(
-  gsub(  "[^[:alnum:]\\-\\.\\s]|[[:alpha:]]", "",
-         grep('STATISTICS_MEAN', 
-              estadisticas_buffer_100m, value = TRUE)) ) )
-
-(pixeles_zonas_riparias_100 <- celdas_buff_100 * promedio_buff_100)
-
-
+(estadisticas_buffer_100m <- tabuleRaster(archivo_raster_buffer_100, n256 = TRUE, del0 = TRUE)) 
+(pixeles_zonas_riparias_100 <- subset(estadisticas_buffer_100m, id == 1)$count)
 
 # raster_buffer_30 <- raster(archivo_raster_buffer_30)
 # system.time( starR <- raster::cellStats(raster_buffer_30, sum, na.rm = TRUE) ) 
-# 16375319
-# 0.031218244038617 * 21908 * 23943
-
-# raster_buffer_100 <- raster(archivo_raster_buffer_100)
-# raster::cellStats(raster_buffer_100, sum, na.rm = TRUE) # 53383714
-# 0.10177180739745 * 21908 * 23943
+# 8799976
 
 
 
+## Extraer nombres de columnas
+
+todos_nombres_columnas <- lapply(archivos_bosques, function(x){ # x <- archivos_bosques[1]
+  dbf.x <- read.dbf( gsub('.shp', '.dbf', x), as.is = TRUE)
+  bosque_pos <- unique(unlist(sapply(dbf.x, function(x) {grep('bosque', tolower(x))} )))
+  (anio <- gsub('_$|.+__', "", gsub("([^_{0-9, 4}_])", '', basename(x))))
+  dbf.y <- cbind.data.frame(yyyy = anio, colnam = colnames(dbf.x), 
+                            example = as.vector(t(dbf.x[bosque_pos[1], ])))
+})
+
+do.call(rbind, todos_nombres_columnas)
+
+
+# Consignar los nombres que contienen las columnas con bosque en las diferentes capas
+nombres_columnas <- c('cobertura_', 'ctn2')
 
 
 ## Iterar sobre los bosques -----
-nombres_columnas <- c('cobertura_', 'ctn2')
 
 for( f in 1:length(archivos_bosques)){ # f = 1 # }
   
@@ -286,7 +316,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   ## Bosques filtrar polígono -----
   (bosque_archivo <- gsub('v_ff010_cobertura_vegetal_', 'BOSQUE_',
                           gsub('_aPolygon', '', basename(archivos_bosques[f]) ) ))
-  (bosque_archivo_ruta <- paste0('02_bosques-filtrados/', bosque_archivo ) )
+  (bosque_archivo_ruta <- paste0('04_bosques-filtrados/', bosque_archivo ) )
   (anio <- gsub('\\.|[[:alpha:]]|[[:punct:]]', '', bosque_archivo))
   
   #(cmd <- paste0('ogr2ogr -where "\"cobertura_\" = \"BOSQUE\" AND \"cobertura_\" = \"BOSQUE NATIVO\"" -f "ESRI Shapefile" ',outshp, ' ', forests[f]))
@@ -315,7 +345,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   
   
   ## Bosques rasterizar -----
-  (bosque_rasterizado <- paste0( '03_bosques-raster/', #  
+  (bosque_rasterizado <- paste0( '05_bosques-raster/', #  
                                  basename(tools::file_path_sans_ext(bosque_archivo_ruta)), '.tif'))
   if ( !file.exists(bosque_rasterizado) ) {
     
@@ -343,15 +373,15 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   (bosque_buffer_30_01 <- paste0( '06_cruce-bosques-riparios/',
                                   'bosque_ripario30m_', anio , '_01.tif'))
   
-  #raster_bosque <- raster(bosque_rasterizado)
-  stack_capas_30m <- raster::stack(bosque_rasterizado, archivo_raster_buffer_30)
-  #print(paste0( ' -A ', root, bosque_rasterizado,  ' -B ', root, archivo_raster_buffer_30, ' --outfile=', root, bosque_buffer_30))
-  
+  stack_capas_30m <- c(list(terra::rast(bosque_rasterizado), 
+                            terra::rast(archivo_raster_buffer_30)))
+
   if (!file.exists(bosque_buffer_30)){
     print(system.time({ # 50 mins
       bosques_riparios_30 <-  stack_capas_30m[[1]] & stack_capas_30m[[2]]
-      writeRaster(bosques_riparios_30,bosque_buffer_30, overwrite = TRUE, 
-                  datatype = 'INT1S', options=c("COMPRESS=DEFLATE", "NBITS=1"))
+      terra::writeRaster(x = bosques_riparios_30, filename = bosque_buffer_30, 
+                         overwrite = TRUE, datatype = 'INT1S', 
+                         gdal=c("COMPRESS=DEFLATE", "NBITS=1"))
     })) #203.89s
   }
   
@@ -368,7 +398,6 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   
   #raster_bosque30m01 <- raster(bosque_buffer_30_01); plot(raster_bosque30m01)
   
-  
   # Bosque en buffers 100m -----
   (bosque_buffer_100 <- paste0( '06_cruce-bosques-riparios/',
                                 'bosque_ripario100m_', anio , '.tif'))
@@ -376,19 +405,16 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   (bosque_buffer_100_01 <- paste0( '06_cruce-bosques-riparios/', 
                                    'bosque_ripario100m_', anio , '_01.tif'))
   
-  #raster_bosque <- raster(bosque_rasterizado)
-  stack_capas_100m <- raster::stack(bosque_rasterizado, archivo_raster_buffer_100)
+  stack_capas_100m <- c(list(terra::rast(bosque_rasterizado), 
+                            terra::rast(archivo_raster_buffer_100)))
+  
+  
   if (!file.exists(bosque_buffer_100)){
-    # 50 mins
-    # bosques_riparios_100 <- calc(x = stack_capas_100m, 
-    #                             forcefun = TRUE, fun  = function(stk){
-    #                               stk[[1]] & stk[[2]]}, 
-    #                             filename=bosque_buffer_100, 
-    #                             datatype = 'LOG1S'))
-    print(system.time({ # 50 mins
+    print(system.time({ # 
       bosques_riparios_100 <-  stack_capas_100m[[1]] & stack_capas_100m[[2]]
-      writeRaster(bosques_riparios_100, bosque_buffer_100, overwrite = TRUE, 
-                  datatype = 'INT1S', options=c("COMPRESS=DEFLATE", "NBITS=1"))
+      terra::writeRaster(x = bosques_riparios_100, filename = bosque_buffer_100, 
+                         overwrite = TRUE, datatype = 'INT1S', 
+                         gdal=c("COMPRESS=DEFLATE", "NBITS=1"))
     })) # 208
     
   }
@@ -409,47 +435,20 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   
   archivo_tabla_resumen <- paste0( '06_cruce-bosques-riparios/', 
                                    'estadisticas_bosque_riparios', anio , '.csv') 
+  
+  
   if(!file.exists(archivo_tabla_resumen)){
+    
     ## Estadisticas 30m---
-    estadisticas_ripario_30 <- capture.output(
-      gdalUtilities::gdalinfo(bosque_buffer_30_01, stats = TRUE, checksum = TRUE) )
-    
-    dimensiones_ripario_30 <- as.numeric(
-      strsplit(gsub('[[:alpha:]]| ','', 
-                    grep('Size is', estadisticas_buffer_30m,
-                         value = TRUE) ), ",")[[1]])
-    
-    celdas_ripario_30 <- Reduce(f = '*', x = dimensiones_ripario_30)
-    
-    (promedio_ripario_30 <- as.numeric(gsub("[^[:alnum:]\\-\\.\\s]|[[:alpha:]]", "",
-                                            grep('STATISTICS_MEAN', 
-                                                 estadisticas_ripario_30, 
-                                                 value = TRUE)) ) )
-    (pixeles_bosques_riparios_30 <- celdas_ripario_30 * promedio_ripario_30)
-    
-    
+    (estadisticas_ripario_30 <- tabuleRaster(bosque_buffer_30_01, n256 = TRUE, del0 = TRUE)) 
+    (pixeles_bosques_riparios_30 <- subset(estadisticas_ripario_30, id == 1)$count)
     
     ## Estadisticas 100m ------
-    
-    estadisticas_ripario_100 <- capture.output(
-      gdalUtilities::gdalinfo(bosque_buffer_100_01, stats = TRUE, checksum = TRUE) )
-    
-    dimensiones_ripario_100 <- as.numeric(
-      strsplit(gsub('[[:alpha:]]| ','', 
-                    grep('Size is', estadisticas_buffer_100m,
-                         value = TRUE) ), ",")[[1]])
-    
-    celdas_ripario_100 <- Reduce(f = '*', x = dimensiones_ripario_100)
-    
-    (promedio_ripario_100 <- as.numeric(gsub("[^[:alnum:]\\-\\.\\s]|[[:alpha:]]", "",
-                                             grep('STATISTICS_MEAN', 
-                                                  estadisticas_ripario_100, 
-                                                  value = TRUE)) ) )
-    (pixeles_bosques_riparios_100 <- celdas_ripario_100 * promedio_ripario_100)
+    (estadisticas_ripario_100 <- tabuleRaster(bosque_buffer_100_01, n256 = TRUE, del0 = TRUE)) 
+    (pixeles_bosques_riparios_100 <- subset(estadisticas_ripario_100, id == 1)$count)
     
     
-    
-    tabla_resumen <- data.frame(fecha = anio,
+    (tabla_resumen <- data.frame(fecha = anio,
                                 pix_rip30m = pixeles_zonas_riparias_30,
                                 pix_bosrip30m = pixeles_bosques_riparios_30,
                                 propbosrip30m = pixeles_bosques_riparios_30 / pixeles_zonas_riparias_30,
@@ -458,7 +457,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
                                 pix_bosrip100m = pixeles_bosques_riparios_100,
                                 propbosrip100m = pixeles_bosques_riparios_100 / pixeles_zonas_riparias_100,
                                 porcbosrip100m = pixeles_bosques_riparios_100 / pixeles_zonas_riparias_100 * 100
-    )
+    ))
     write.csv(tabla_resumen, file = archivo_tabla_resumen, row.names = FALSE)
   }
   
@@ -477,6 +476,8 @@ for (i in 1:length(archivos_csv)){
 
 write.csv(tabla_compilada, 
           file = '06_cruce-bosques-riparios/estadisticas_bosque_riparios_compiladas.csv')
+write.csv2(tabla_compilada, 
+          file = '06_cruce-bosques-riparios/estadisticas_bosque_riparios_compiladas_puntoycoma.csv')
 
 
 plot(tabla_compilada$fecha, tabla_compilada$propbosrip30m, type = 'b', 
