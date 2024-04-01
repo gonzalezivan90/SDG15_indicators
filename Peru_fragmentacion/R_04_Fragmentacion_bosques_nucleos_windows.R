@@ -85,7 +85,7 @@ root2[grep(' ', root2)] <- paste0('"', root2[grep(' ', root2)] ,'"')
 ## (execGDAL <- paste0('C:/OSGeo4W64/OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc'))
 
 gdalPaths(help = TRUE)
-gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = FALSE, help = FALSE)
+gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = TRUE, help = FALSE)
 
 (execGDAL <- gdal$execGDALcalc)
 

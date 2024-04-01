@@ -214,7 +214,7 @@ if (!file.exists(archivo_buffer_100)){
 
 
 
-## Crear capa raster de buffers de 30 y 10m
+## Crear capa raster de buffers de 30 y 100m
 
 archivo_buffer_30_neg <- paste0('03_rios-raster/', 'buffer30neg.tif')
 archivo_buffer_100_neg <- paste0('03_rios-raster/', 'buffer100neg.tif')
@@ -236,8 +236,9 @@ if (!file.exists(archivo_buffer_30_neg)){
   )) # 100seg
   
   ## Quitar los cuerpos permanentes de agua - rasterizar con valores negativos
+  ## Si hay error, reemplazar gdalUtils:: con gdalUtilities::
   print(system.time(
-    gdalUtils::gdal_rasterize(src_datasource = ruta_rios_pol,
+    gdalUtilities::gdal_rasterize(src_datasource = ruta_rios_pol,
                               dst_filename = archivo_buffer_30_neg,  
                               add = TRUE, 
                               burn = -1)

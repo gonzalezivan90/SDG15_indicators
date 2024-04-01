@@ -1,4 +1,4 @@
-gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
+gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE, manualPath = NULL){
   # depth = 3; drives = c('C'); help = FALSE; latestQ = TRUE; i = 1; j = 1; k = 1
   if (help){
     cat('\n\nThis function will try to find the QGIS folders and locate gdal axecutables inside them.',
@@ -10,119 +10,186 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
         "\nUsage:\n\tgdalPaths(depth = 3, drives = c('C'), help = FALSE)\n\n"   )
     
     ## 
-    ans <- 'Run gdalPaths(help = FALSE) to found GDAL in your computer'
+    ans <- 'Run gdalPaths(help = FALSE, ...) to found GDAL in your computer'
     
   } else {
     
+    # Starting the result
     found <- FALSE
-    arg1_exists <- arg2_exists <- FALSE
     ans <- 'no GDAL found'
     
-    if (length(drives) == 0){
-      error("'drives' must be a vector of different hard drives. For example: drives = c('C', 'D') or drives = c('C')")
+    ## Set manueal path
+    if (!is.null(manualPath)){
+      # manualPath = 'C:/"Program Files"/"QGIS 3.14"'
+      # manualPath = 'C:/Program Files/QGIS 3.20.1'
+      # manualPath = 'C:/Program Files/QGIS 3.28.3/'
+      
+      mp <- strsplit(manualPath, '/')[[1]]
+      mp[grep(' ', mp)] <- paste0('"', mp[grep(' ', mp)] ,'"') 
+      (mp <- gsub(pattern = '/', replacement = '\\', 
+                  x = paste0(paste0(mp, collapse = '/'), '/'), fixed = TRUE))
+      (mp <- gsub(pattern = '/', replacement = '\\', x = mp) )
+      
+      
+      # Older versions -- 3.1x
+      if(any(grep('3\\.1', mp))){
+        # (execGDAL <- paste0('E:\\OSGeo4W.bat E:\\bin\\o4w_env.bat && E:\\bin\\o4w_env.bat && gdal_calc '))
+        # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat', ' py3_env.bat && py3_env.bat && gdal_calc ')) 
+        (execGDAL <- paste0(gsub('OSGeo4W.bat| $|OSGeo4W.bat $', '',  mp), '\\OSGeo4W.bat && py3_env.bat && py3_env.bat'))
+        
+      } else {
+        # Newer vers 3.2+
+        # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.20.1"\\OSGeo4W.bat', 'C:\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && C:\\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && gdal_calc '))
+        (mp0 <- gsub('OSGeo4W.bat| $|OSGeo4W.bat $', '',  mp))
+        
+        (execGDAL <- paste0(mp0, '\\OSGeo4W.bat && ',
+                            mp0, '\\bin\\o4w_env.bat && ',
+                            mp0, '\\bin\\o4w_env.bat'))
+      }
+      
+      
+      (execGDALcalc <- paste0(execGDAL, ' && gdal_calc') ) 
+      (gdalcalclog <- (system(paste0(execGDALcalc, ' --help'), intern = TRUE)))
+      
+      ## Asignar TRUE si se encuentra respuesta del sistema
+      (gdalcalcworks <- ifelse(any(grep('gdal_calc.py', gdalcalclog)), TRUE, FALSE))
+      
+      (execGDALsieve <- gsub('gdal_calc', 'gdal_sieve', execGDALcalc))
+      (gdalsievelog <- suppressWarnings(system(paste0(execGDALsieve, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+      (gdalsieveworks <- ifelse(any(grep('Usage: gdal_sieve', gdalsievelog)), TRUE, FALSE))
+      
+      
+      (execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDALcalc))
+      (gdalproxylog <- suppressWarnings(system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+      (gdalgdalproxyworks <- ifelse(any(grep('Usage: gdal_proximity.py', gdalproxylog)), TRUE, FALSE))
+      
+      if(gdalcalcworks) { found <- TRUE }
+      
+      ans <- list(execGDALcalc = execGDALcalc, 
+                  gdalcalcworks = gdalcalcworks, 
+                  execGDALsieve = execGDALsieve, 
+                  gdalsieveworks = gdalsieveworks, 
+                  execGDALproxy = execGDALproxy, 
+                  gdalgdalproxyworks = gdalgdalproxyworks)
+    } else {
+      
+      if (length(drives) == 0){
+        error("'drives' must be a vector of different hard drives. For example: drives = c('C', 'D') or drives = c('C')")
+      }
+      
     }
     
-    for(i in 1:length(drives)){ # i = 1
-      (drive <- paste0(drives[i],':/'))
+    # Still try if manual didn't worked
+    
+    ## Find the gdal path
+    arg1_exists <- arg2_exists <- FALSE
+    
+    if ( (!found) & is.character(drives)[1]){ 
       
-      #for(j in 1:depth){ # j = 1
-      folders <- new_folders <-  unique(c( paste0(drives[i],':/', c('Program Files', '.')), 
-                                           gsub('//', '/', list.dirs(drive, recursive = FALSE) )) )
-      
-      if(depth >= 2 ){ # j = 2
-        temp_folder <- folders
-        for(n in 2:depth){
-          new_folders <- unname(unlist(sapply(temp_folder, list.dirs, recursive = FALSE)))
-          temp_folder <- c(temp_folder, new_folders)
-        }
-        folders <- temp_folder
-      }
-      # print(tail(temp_folder))
-      # print(head(folders))
-      # print(tail(folders))
-      
-      ## Prioritize QGIS folders
-      qgisPos <- grep('QGIS', toupper( folders ))
-      #grep('QGIS', toupper( folders ), value = TRUE)
-      
-      if ( length(qgisPos) >= 1){
-        if(latestQ){  qgisPos <- rev(qgisPos) }
-        folders <- c(folders[qgisPos], folders[-qgisPos])
-        #(qgis <- dirs1[tail(qgisPos, 1)])
-      }
-      
-      folders <- unique(gsub('/./', '/', folders))
-      #head(folders)
-      
-      
-      for (k in 1:length(folders)){ # k = 1
-        (folder <- folders[k])
+      for(i in 1:length(drives)){ # i = 1
+        (drive <- paste0(drives[i],':/'))
         
-        # if(basename(folder) == '.'){
-        #   dirs1 <- folder
-        # } else {
-        #   dirs1 <- list.dirs(path = folder, recursive = FALSE)
-        # }
+        #for(j in 1:depth){ # j = 1
+        folders <- new_folders <-  unique(c( paste0(drives[i],':/', c('Program Files', '.')), 
+                                             gsub('//', '/', list.dirs(drive, recursive = FALSE) )) )
         
-        OSGeo4W <- paste0(folder, '/OSGeo4W.bat')
-        (arg1_exists <- file.exists(OSGeo4W))
-        
-        if(arg1_exists) {
-          arg1 <- OSGeo4W
-          o4w_env <- paste0(folder, '/bin/o4w_env.bat')
-          (arg2_exists <- file.exists(o4w_env))
-          if (arg2_exists){
-            arg2 <- o4w_env
-          } else {
-            py3_env <- paste0(folder, '/py3_env.bat')
-            (arg2_exists <- file.exists(py3_env))
-            if (arg2_exists){
-              arg2 <- py3_env
-            }
+        if(depth >= 2 ){ # j = 2
+          temp_folder <- folders
+          for(n in 2:depth){
+            new_folders <- unname(unlist(sapply(temp_folder, list.dirs, recursive = FALSE)))
+            temp_folder <- c(temp_folder, new_folders)
           }
+          folders <- temp_folder
+        }
+        # print(tail(temp_folder))
+        # print(head(folders))
+        # print(tail(folders))
+        
+        ## Prioritize QGIS folders
+        qgisPos <- grep('QGIS', toupper( folders ))
+        #grep('QGIS', toupper( folders ), value = TRUE)
+        
+        if ( length(qgisPos) >= 1){
+          if(latestQ){  qgisPos <- rev(qgisPos) }
+          folders <- c(folders[qgisPos], folders[-qgisPos])
+          #(qgis <- dirs1[tail(qgisPos, 1)])
+        }
+        
+        folders <- unique(gsub('/./', '/', folders))
+        #head(folders)
+        
+        
+        for (k in 1:length(folders)){ # k = 1
+          (folder <- folders[k])
           
-          if ( arg1_exists & arg2_exists ){
-            #print(paste(i, j, k, drive, folder, arg1, arg2))
-            print(paste('Analizing ', folder))
-            found <- TRUE
+          # if(basename(folder) == '.'){
+          #   dirs1 <- folder
+          # } else {
+          #   dirs1 <- list.dirs(path = folder, recursive = FALSE)
+          # }
+          
+          OSGeo4W <- paste0(folder, '/OSGeo4W.bat')
+          (arg1_exists <- file.exists(OSGeo4W))
+          
+          if(arg1_exists) {
+            arg1 <- OSGeo4W
+            o4w_env <- paste0(folder, '/bin/o4w_env.bat')
+            (arg2_exists <- file.exists(o4w_env))
+            if (arg2_exists){
+              arg2 <- o4w_env
+            } else {
+              py3_env <- paste0(folder, '/py3_env.bat')
+              (arg2_exists <- file.exists(py3_env))
+              if (arg2_exists){
+                arg2 <- py3_env
+              }
+            }
             
-            arg1_bslas <- strsplit(arg1, '/')[[1]]
-            arg1_bslas[grep(' ', arg1_bslas)] <- paste0('"', arg1_bslas[grep(' ', arg1_bslas)] ,'"') 
-            arg1_bslas <- paste0(paste0(arg1_bslas, collapse = '/'))
-            
-            arg2_bslas <- strsplit(arg2, '/')[[1]]
-            arg2_bslas[grep(' ', arg2_bslas)] <- paste0('"', arg2_bslas[grep(' ', arg2_bslas)] ,'"') 
-            arg2_bslas <- paste0(paste0(arg2_bslas, collapse = '/'))
-            
-            execGDALcalc <- gsub(fixed = TRUE, '/', '\\', paste0(arg1_bslas, ' ', arg2_bslas, ' && ', arg2_bslas, ' && gdal_calc') ) 
-            (gdalcalclog <- (system(paste0(execGDALcalc, ' --help'), intern = TRUE)))
-            
-            ## Asignar TRUE si se encuentra respuesta del sistema
-            (gdalcalcworks <- ifelse(any(grep('gdal_calc.py', gdalcalclog)), TRUE, FALSE))
-            
-            (execGDALsieve <- gsub('gdal_calc', 'gdal_sieve', execGDALcalc))
-            (gdalsievelog <- suppressWarnings(system(paste0(execGDALsieve, ''), intern = TRUE))) ## Esta opción no necesita "--help"
-            (gdalsieveworks <- ifelse(any(grep('Usage: gdal_sieve', gdalsievelog)), TRUE, FALSE))
-            
-            
-            (execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDALcalc))
-            (gdalproxylog <- suppressWarnings(system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
-            (gdalgdalproxyworks <- ifelse(any(grep('Usage: gdal_proximity.py', gdalproxylog)), TRUE, FALSE))
-            
-            
-            ans <- list(execGDALcalc = execGDALcalc, 
-                        gdalcalcworks = gdalcalcworks, 
-                        execGDALsieve = execGDALsieve, 
-                        gdalsieveworks = gdalsieveworks, 
-                        execGDALproxy = execGDALproxy, 
-                        gdalgdalproxyworks = gdalgdalproxyworks)
-            break()
+            if ( arg1_exists & arg2_exists ){
+              #print(paste(i, j, k, drive, folder, arg1, arg2))
+              print(paste('Analizing ', folder))
+              found <- TRUE
+              
+              arg1_bslas <- strsplit(arg1, '/')[[1]]
+              arg1_bslas[grep(' ', arg1_bslas)] <- paste0('"', arg1_bslas[grep(' ', arg1_bslas)] ,'"') 
+              arg1_bslas <- paste0(paste0(arg1_bslas, collapse = '/'))
+              
+              arg2_bslas <- strsplit(arg2, '/')[[1]]
+              arg2_bslas[grep(' ', arg2_bslas)] <- paste0('"', arg2_bslas[grep(' ', arg2_bslas)] ,'"') 
+              arg2_bslas <- paste0(paste0(arg2_bslas, collapse = '/'))
+              
+              (execGDAL <- gsub(fixed = TRUE, '/', '\\', paste0(arg1_bslas, ' ', arg2_bslas, ' && ', arg2_bslas) ))
+              
+              (execGDALcalc <- paste0(arg1_bslas, ' ', arg2_bslas, ' && ', arg2_bslas, ' && gdal_calc') ) 
+              (gdalcalclog <- (system(paste0(execGDALcalc, ' --help'), intern = TRUE)))
+              
+              ## Asignar TRUE si se encuentra respuesta del sistema
+              (gdalcalcworks <- ifelse(any(grep('gdal_calc.py', gdalcalclog)), TRUE, FALSE))
+              
+              (execGDALsieve <- gsub('gdal_calc', 'gdal_sieve', execGDALcalc))
+              (gdalsievelog <- suppressWarnings(system(paste0(execGDALsieve, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+              (gdalsieveworks <- ifelse(any(grep('Usage: gdal_sieve', gdalsievelog)), TRUE, FALSE))
+              
+              
+              (execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDALcalc))
+              (gdalproxylog <- suppressWarnings(system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
+              (gdalgdalproxyworks <- ifelse(any(grep('Usage: gdal_proximity.py', gdalproxylog)), TRUE, FALSE))
+              
+              
+              ans <- list(execGDALcalc = execGDALcalc, 
+                          gdalcalcworks = gdalcalcworks, 
+                          execGDALsieve = execGDALsieve, 
+                          gdalsieveworks = gdalsieveworks, 
+                          execGDALproxy = execGDALproxy, 
+                          gdalgdalproxyworks = gdalgdalproxyworks)
+              break()
+            }
+            if (found & gdalcalcworks) {break()} 
           }
-          if (found) {break()} 
+          if (found & gdalcalcworks) {break()} 
         }
-        if (found) {break()} 
+        if (found & gdalcalcworks) {break()} 
       }
-      if (found) {break()} 
     }
   }
   # end while
@@ -131,6 +198,7 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
 # 
 # gdalPaths(help = TRUE)
 # gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = TRUE, help = FALSE)
+# gdal <- gdalPaths(manualPath = 'C:/Program Files/QGIS 3.28.3')
 # 
 # 
 # # Evaluar si tenemos acceso a gdal_calc --
@@ -167,20 +235,16 @@ gdalPaths <- function(depth = 2, drives = c('C'), latestQ = TRUE, help = FALSE){
 # 
 # ##Aca la configuración para QGIS3.14, pero abajo hay instrucciones para otras versiones. #CAMBIAR ---
 # 
-# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat',   'py3_env.bat && py3_env.bat && gdal_calc '))
+# (execGDAL <- paste0('E:\\OSGeo4W.bat E:\\bin\\o4w_env.bat && E:\\bin\\o4w_env.bat && gdal_calc '))
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat', ' py3_env.bat && py3_env.bat && gdal_calc ')) 
+# (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.18"\\OSGeo4W.bat', ' py3_env.bat && py3_env.bat && gdal_calc '))
 # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.20.1"\\OSGeo4W.bat', 'C:\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && C:\\"Program Files"\\"QGIS 3.3.20.1"\\bin\\o4w_env.bat && gdal_calc '))
 # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.6"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat && gdal_calc '))
 # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.28.1"\\OSGeo4W.bat ','C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.28.1"\\bin\\o4w_env.bat && gdal_calc '))
 # (execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.22.12"\\OSGeo4W.bat','C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && ', 'C:\\"Program Files"\\"QGIS 3.22.12"\\bin\\o4w_env.bat && gdal_calc '))
-# (execGDAL <- paste0('E:\\OSGeo4W.bat E:\\bin\\o4w_env.bat && E:\\bin\\o4w_env.bat && gdal_calc '))
-# 
-# execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat py3_env.bat && py3_env.bat && gdal_calc ') 
-# 
-# 
-# 
+#  
 # execGDAL <- paste0('C:\\"Program Files"\\"QGIS 3.14"\\OSGeo4W.bat ', # Mantener espacio al final. Ubicación del archivo OSGeo4W.bat que es el orquestador de ejecutables GIS00
 #                    'py3_env.bat ', # Mantener espacio. Ubicación de el ejecutable que configura entorno de python. Puede llamarse tambien o4w_env.bat
 #                    '&& py3_env.bat ', # Mantener espacio al . Repetir linea anterior. Alternativa en 3.22.6: C:\\"Program Files"\\"QGIS 3.22.6"\\bin\\o4w_env.bat
 #                    '&& gdal_calc ') # Llamado de gdal_calc, Dejar espacio al final
-# 
 
