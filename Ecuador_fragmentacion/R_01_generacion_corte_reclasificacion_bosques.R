@@ -357,19 +357,19 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
 }
 
 ## Calcula pixeles terrestres totales del pais
-(area_terrestre <- tabuleRaster(mascara_terrestre_01, del0 = TRUE, n256 = TRUE))
+(area_terrestre <- tabuleRaster(mascara_terrestre, del0 = TRUE, n256 = TRUE))
 # 1 == 1398064402
 
 ## Extraer estadisticas de capa de bosques anuales
-(archivos_bosques <- list.files(path = '03_bosques-anuales/', pattern = 'bosqueFecha.+.tif$', full.names = TRUE))
+(archivos_bosques <- list.files(path = '03_bosques-raster', pattern = 'BOSQUE.+.tif$', full.names = TRUE))
 areas_bosques <- lapply(archivos_bosques, function(x){
   print(x)
-  cbind.data.frame(tipo = 'bosque', anio = gsub('bosqueFecha|_|.tif', '', basename(x)), 
+  cbind.data.frame(tipo = 'bosque', anio = gsub('BOSQUE|_|.tif', '', basename(x)), 
                    tabuleRaster(x, del0 = TRUE, n256 = TRUE))
 })
 
 ## Extraer estadisticas de capa de bosques nucelos anuales
-(archivos_nucleos <- list.files(path = '05_resultados-fragmentacion/', pattern = 'bosqueNucleo.+.tif$', full.names = TRUE))
+(archivos_nucleos <- list.files(path = '05_bosques-nucleo', pattern = 'bosqueNucleo.+.tif$', full.names = TRUE))
 areas_nucleos <- lapply(archivos_nucleos, function(x){
   print(x)
   cbind.data.frame(tipo = 'nucleo', anio = gsub('bosqueNucleo|_|.tif', '', basename(x)), 
