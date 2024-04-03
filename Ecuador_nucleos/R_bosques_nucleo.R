@@ -7,9 +7,9 @@ library(gdalUtilities) # Conexion a suit GDAL/OGR para ejecutar externo
 library(gdalUtils) # Conexion a suit GDAL/OGR para ejecutar externo 
 
 ## Cargar funcion de conteo de pixeles
-source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/Ecuador_fragmentacion/R_03_tabuleRaster.R")
+source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/functions/tabuleRaster.R")
 ## Cargar funcion para encontrar los ejecutables de GDAL en el computador
-source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/find_gdal.R")
+source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/functions/findGDAL.R")
 
 # Si el anterior genera error por conexión a Github, entonces llamar localmente al achivo:
 # El archivo se puede descargar con la opción "Guardar como" desde el navegador, al copiar el link anterior. Es posible que el archivo descarge como R_03_tabuleRaster.R.txt
@@ -20,7 +20,7 @@ source("https://raw.githubusercontent.com/gonzalezivan90/SDG15_indicators/main/f
 
 
 ### 1 Definir Ruta de trabajo ----
-root <- 'C:/temp/Ecuador_fragmentacion/' # Usar / o \\. Cada uno cambia su ruta
+root <- 'C:/temp/Ecuador_nucleos/' # Usar / o \\. Cada uno cambia su ruta
 dir.create(root); setwd( root ) # asignar ruta de trabajo
 
 outDirs <- c('01_datos-originales', "02_mascara-terrestre", 
@@ -51,6 +51,8 @@ poligonos_rios_a <- '01_datos-originales\\Rio_a_250K_ECU_IGM.shp' ## <Dato exter
 file.exists(poligonos_rios_a) # - debe se TRUE
 lineas_rios_l <- '01_datos-originales\\Rio_l_250K_ECU_IGM.shp' ## <Dato externo original>
 file.exists(lineas_rios_l) # - debe se TRUE
+limite_nacional <- '01_datos-originales\\ORGANIZACION TERRITORIAL PROVINCIAL.shp' ## <Dato externo original>
+file.exists(limite_nacional) # - debe se TRUE
 
 
 
@@ -75,11 +77,10 @@ gdal <- gdalPaths(depth = 3, drives = c('C'), latestQ = FALSE, help = FALSE)
 # (execGDALproxy <- gsub('gdal_calc', 'gdal_proximity', execGDAL))
 # (gdalproxy <- (system(paste0(execGDALproxy, ''), intern = TRUE))) ## Esta opción no necesita "--help"
 (execGDALproxy <- gdal$execGDALproxy)
-(gdalproxy <- gdal$execGDALproxy)
+(gdalproxy <- gdal$gdalgdalproxyworks)
 
 
 ### 2. Extraer polígonos de bosques -----
-
 
 ## Bosques -----
 folder_bosques <- '01_datos-originales/'
@@ -87,17 +88,19 @@ folder_bosques <- '01_datos-originales/'
 (archivos_bosques <- list.files(path = folder_bosques, 
                                 pattern = '^v_ff.+shp$', full.names = TRUE))
 
+
 # Extraemos extent nacional
-(info_bosques <- tryCatch(gdalUtils::ogrinfo(archivos_bosques[1], so = TRUE, al = TRUE), error = function(e) NULL))
-if(!is.null(info_bosques)){
-  (extent_bosques <- grep('Extent', info_bosques, value = TRUE))
-  (extent_sin_texto <- gsub('[a-zA-Z]|\\)|\\(|-|:|: |,|^ ', '', extent_bosques) )
+capa_extent <- archivos_bosques[1]# limite_nacional  #archivos_bosques[1]
+(info_extent <- tryCatch(gdalUtils::ogrinfo(capa_extent, so = TRUE, al = TRUE), error = function(e) NULL))
+if(!is.null(info_extent)){
+  (extent_completo <- grep('Extent', info_extent, value = TRUE))
+  (extent_sin_texto <- gsub('[a-zA-Z]|\\)|\\(|-|:|: |,|^ ', '', extent_completo) )
   (extent_numerico <- as.numeric(strsplit( gsub('  ', ' ', 
                                                 extent_sin_texto), ' ')[[1]] ))
   names(extent_numerico) <- c("xmin", "ymin", "xmax", "ymax")
 } else {
   ## En caso de error con la linea 25 gdalUtils::ogrinfo
-  (polygon_bosques <- tryCatch( sf::read_sf(archivos_bosques[1]) , error = function(e) NULL))
+  (polygon_bosques <- tryCatch( sf::read_sf(capa_extent) , error = function(e) NULL))
   (extent_numerico <-  sf::st_bbox(polygon_bosques))
 }
 
@@ -115,7 +118,6 @@ todos_nombres_columnas <- lapply(archivos_bosques, function(x){ # x <- archivos_
   dbf.y <- cbind.data.frame(yyyy = anio, colnam = colnames(dbf.x), 
                             example = as.vector(t(dbf.x[bosque_pos[1], ])))
 })
-
 do.call(rbind, todos_nombres_columnas)
 
 
@@ -126,7 +128,7 @@ nombres_columnas <- c('cobertura_', 'ctn2')
 
 ## Rios ------
 # Cuerpos de agua de mapa de ecosistemas
-coberturas <-  archivos_bosques[1]
+coberturas <- archivos_bosques[1]
 agua_ecosistemas <-  paste0('02_mascara-terrestre/', 'agua_ecosistemas.shp')
 dbf_inicial = foreign::read.dbf(gsub('.shp', '.dbf', coberturas))
 table(dbf_inicial$cobertura_)
@@ -186,26 +188,40 @@ if ( ! file.exists(archivo_rios_poligonos) ){
                            nln = tools::file_path_sans_ext(basename(archivo_rios_poligonos)),
                            f = "ESRI Shapefile")
   ) # 13
-  
-  
 }
 
 mascara_terrestre <- paste0('02_mascara-terrestre/', 'mascara_terrestre.tif')
-if (!file.exists(archivo_rios_buffer)){
+if (! file.exists(mascara_terrestre)){
   
   ## Rasterizar la capa de buffers
   print(system.time(
-    gdalUtilities::gdal_rasterize(at = TRUE, 
-                                  src_datasource = archivo_rios_poligonos, 
-                                  dst_filename = archivo_rios_buffer,
-                                  ot = 'Byte', # Para permitir valores negativos
-                                  burn = 1, tr = c(30, 30), init = 0, 
-                                  te =  extent_numerico, # xmin ymin xmax ymax
-                                  co=c("COMPRESS=DEFLATE", "NBITS=1"))
-  )) # 30seg
+    gdalUtilities::gdal_rasterize(
+      src_datasource = capa_extent, 
+      dst_filename = '02_mascara-terrestre/mascara_temporal.tif',
+      ot = 'Int16', # Para permitir valores negativos
+      burn = 1, tr = c(30, 30), init = 0, 
+      te =  extent_numerico # xmin ymin xmax ymax
+  ))) # 30seg
+  
+  ## Eliminar ríos
+  print(system.time(
+    gdalUtilities::gdal_rasterize(
+      add = TRUE, at = 1,
+      src_datasource = archivo_rios_poligonos, 
+      dst_filename = '02_mascara-terrestre/mascara_temporal.tif',
+      burn = -1)
+  )) #
+  
+  ## Convertir entre 0 y 1 con compresion
+  print(system.time(
+    gdalUtilities::gdalwarp(srcnodata = 255, dstnodata = 255, # dato que se usa como nodata original, es decir que el 0 sea escrito
+                            srcfile = '02_mascara-terrestre/mascara_temporal.tif', 
+                            dstfile = mascara_terrestre,
+                            ot = 'Byte', co = c("COMPRESS=DEFLATE", "NBITS=1")) # Asegurarnos de solo 1 y 0
+  ))
 }
 
-## Borrar archivos intermedios? 
+## Borrar archivos intermedios?  Si se cuenta con bastante espacio en disco dejar como FALSE
 borrar_archivos_intermedios <- TRUE
 
 ## Iterar sobre los bosques -----
@@ -249,9 +265,6 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
   }
   
   ## 
-  
-  
-  
   ## Eliminar areas pequeñas -- microperforaciones
   (bosques_rellenados_pesado <- paste0('04_bosques-reclasificados/', '/bosqueLlenadoPesado_', anio, '.tif' ))
   (bosques_rellenados <- paste0('04_bosques-reclasificados/', '/bosqueLlenado_', anio, '.tif' ))
@@ -301,11 +314,11 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
                  paste0(execGDAL,
                         ' -A ', root2, '\\', bosque_rasterizado, # 0 no bosque, 1 bosque
                         ' -B ', root2, '\\', bosques_rellenados, # 0 no bosque, 1 bosque
-                        ' -C ', root2, '\\', mascara_terrestre , # 0 no bosque, 1 bosque
+                        ' -C ', root2, '\\', mascara_terrestre , # 0 agua, 1 tierra
                         ' --outfile=', root2, '\\', bosques_refinados,
                         ## Dejar bosques (1) en mascara terrestre (C), que hayan sido bosques iniciales (B)
                         ## y rellenandos en la capa refinada (B). Los rios quedan como 2, y no bosque como 0
-                        ' --calc="(C * (A + (logical_and(A==0, B==1 )))) + (2 * (C == 0))" ',
+                        ' --calc="(C * (A + (logical_and(A==0, B==1 ))) ) + (2 * (C == 0))" ',
                         ' --type=Byte  --co="COMPRESS=DEFLATE"') # --co="NBITS=8"
     ))
     print(system.time(system(cmd)) ) # 611 || 2870.31 ~ 50min
@@ -327,7 +340,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
                         ' ', root2, '\\', distancia_bosques, # Salida
                         ' -distunits PIXEL', # Unidades a medir en pixel
                         ' -values 0 ', # 0 es el valor de pixeles que deforestan y generan efecto borde, al que se medira la distancia
-                        ' -maxdist 35 ', # Distancia maxima. Despues de 35 pixeles se asigna una constante 
+                        ' -maxdist 35 ', # Distancia maxima. Despues de 35 pixeles se asigna una constante. 35 es 1km aprox 
                         ' -nodata 36 ', # # Valores a dejar fuera del buffer despues de 35 pixeles // el 36 se convierte en 1 por NBITS=1
                         ' -fixed-buf-val 0 ', # Valores a dejar dentro del buffer
                         ' -ot Byte -co NBITS=1 -co COMPRESS=DEFLATE')
@@ -358,7 +371,7 @@ for( f in 1:length(archivos_bosques)){ # f = 1 # }
 
 ## Calcula pixeles terrestres totales del pais
 (area_terrestre <- tabuleRaster(mascara_terrestre, del0 = TRUE, n256 = TRUE))
-# 1 == 1398064402
+# 1 == 266483062
 
 ## Extraer estadisticas de capa de bosques anuales
 (archivos_bosques <- list.files(path = '03_bosques-raster', pattern = 'BOSQUE.+.tif$', full.names = TRUE))
